@@ -54,6 +54,14 @@ impl Scanner {
         c
     }
 
+    fn peek(&mut self) -> char {
+        if self.is_end() {
+            return '\0';
+        }
+
+        self.source.char_at(self.current)
+    }
+
     fn add_token(&mut self, token_type: TokenType) {
         self.add_token_literal(token_type, None)
     }
@@ -121,6 +129,13 @@ impl Scanner {
                 } else {
                     self.add_token(TokenType::SLASH)
                 }
+            }
+            '\0' => {}
+            ' ' => {}
+            '\r' => {}
+            '\t' => {}
+            '\n' => {
+                self.line += 1;
             }
 
             _ => self.error(format!("Unexpected character: {}", c)),
