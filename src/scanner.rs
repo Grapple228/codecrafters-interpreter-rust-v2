@@ -112,6 +112,16 @@ impl Scanner {
                 };
                 self.add_token(token)
             }
+            '/' => {
+                if self.expect('/') {
+                    // A comment goes until the end of the line
+                    while self.source.char_at(self.current) != '\n' && !self.is_end() {
+                        self.advance();
+                    }
+                } else {
+                    self.add_token(TokenType::SLASH)
+                }
+            }
 
             _ => self.error(format!("Unexpected character: {}", c)),
         }
@@ -161,23 +171,27 @@ mod tests {
 
     #[test]
     fn test_empty_file_ok() -> Result<()> {
+        // Fixtures
         let fx_content = "";
+        let fx_tokens = vec![Token::eof(1)];
 
+        // Init
         let mut scanner = Scanner::from_source(fx_content.to_string());
 
         scanner.scan_tokens()?;
 
         let tokens = scanner.tokens();
 
-        assert_eq!(tokens.len(), 1);
-
-        assert_eq!(tokens, vec![Token::eof(1)]);
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
+        assert_eq!(tokens, fx_tokens);
 
         Ok(())
     }
 
     #[test]
     fn test_parenthesis_ok() -> Result<()> {
+        // Fixtures
         let fx_content = "(({{){})";
         let fx_tokens = vec![
             Token::new(TokenType::LEFT_PAREN, "(", None, 1),
@@ -191,14 +205,15 @@ mod tests {
             Token::eof(1),
         ];
 
+        // Init
         let mut scanner = Scanner::from_source(fx_content.to_string());
 
         scanner.scan_tokens()?;
 
         let tokens = scanner.tokens();
 
-        assert_eq!(tokens.len(), 9);
-
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
         assert_eq!(tokens, fx_tokens);
 
         Ok(())
@@ -206,6 +221,7 @@ mod tests {
 
     #[test]
     fn test_error_std_ok() -> Result<()> {
+        // Fixtures
         let fx_content = ",.$(#";
         let fx_errors = vec![
             SourceError::Lexical("Unexpected character: $".to_string(), 1),
@@ -219,6 +235,7 @@ mod tests {
             Token::eof(1),
         ];
 
+        // Init
         let mut scanner = Scanner::from_source(fx_content.to_string());
 
         scanner.scan_tokens()?;
@@ -226,10 +243,42 @@ mod tests {
         let tokens = scanner.tokens();
         let errors = scanner.errors();
 
-        assert_eq!(tokens.len(), 4);
+        // Check
+        assert_eq!(errors.len(), fx_errors.len());
+        assert_eq!(tokens.len(), fx_tokens.len());
 
         assert_eq!(tokens, fx_tokens);
         assert_eq!(errors, fx_errors);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_double_symbol_operations_ok() -> Result<()> {
+        // Fixtures
+        let fx_content = "<<=>>=!!===";
+
+        let fx_tokens = vec![
+            Token::new(TokenType::LESS, "<", None, 1),
+            Token::new(TokenType::LESS_EQUAL, "<=", None, 1),
+            Token::new(TokenType::GREATER, ">", None, 1),
+            Token::new(TokenType::GREATER_EQUAL, ">=", None, 1),
+            Token::new(TokenType::BANG, "!", None, 1),
+            Token::new(TokenType::BANG_EQUAL, "!=", None, 1),
+            Token::new(TokenType::EQUAL_EQUAL, "==", None, 1),
+            Token::eof(1),
+        ];
+
+        // Init
+        let mut scanner = Scanner::from_source(fx_content.to_string());
+
+        scanner.scan_tokens()?;
+
+        let tokens = scanner.tokens();
+
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
+        assert_eq!(tokens, fx_tokens);
 
         Ok(())
     }
