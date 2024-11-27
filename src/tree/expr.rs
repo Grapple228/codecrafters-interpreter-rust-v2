@@ -2,6 +2,7 @@ use tracing::debug;
 
 use crate::{token::Value, visitor, Token, Visitor};
 
+#[derive(Debug, PartialEq)]
 pub enum Expr {
     Binary {
         left: Box<Expr>,

@@ -1,3 +1,5 @@
+use tracing::info;
+
 use crate::{token::Value, tree::Expr, Token, TokenType, Visitor};
 
 #[derive(Debug, Default)]
@@ -15,6 +17,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Expr {
+        info!("Parsing tokens...");
         //  TODO: Add error handling
         self.expression()
     }
@@ -215,3 +218,57 @@ impl Parser {
         self.peek().token_type == token_type
     }
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+    type Error = Box<dyn std::error::Error>;
+    type Result<T> = core::result::Result<T, Error>; // For tests.
+
+    use super::*;
+
+    #[test]
+    fn test_parse_nil_ok() -> Result<()> {
+        // -- Setup & Fixtures
+        let tokens = vec![Token::new(TokenType::NIL, "nil", None, 1), Token::eof(1)];
+
+        // -- Exec
+        let mut parser = Parser::new(&tokens);
+        let expr = parser.parse();
+
+        // -- Check
+        assert_eq!(expr, Expr::Literal(Some(Value::Nil)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_nubmer_sum_ok() -> Result<()> {
+        // -- Setup & Fixtures
+        let tokens = vec![
+            Token::new(TokenType::NUMBER, "5.5", Some(Value::Number(5.5)), 1),
+            Token::new(TokenType::PLUS, "+", None, 1),
+            Token::new(TokenType::NUMBER, "6.6", Some(Value::Number(6.6)), 1),
+            Token::eof(1),
+        ];
+
+        // -- Exec
+        let mut parser = Parser::new(&tokens);
+        let expr = parser.parse();
+
+        // -- Check
+        assert_eq!(
+            expr,
+            Expr::Binary {
+                left: Box::new(Expr::Literal(Some(Value::Number(5.5)))),
+                operator: Token::new(TokenType::PLUS, "+", None, 1),
+                right: Box::new(Expr::Literal(Some(Value::Number(6.6)))),
+            }
+        );
+
+        Ok(())
+    }
+}
+
+// endregion: --- Tests
