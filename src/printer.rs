@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use tracing::debug;
 
 use crate::{Expr, Value, Visitor};
@@ -39,7 +41,7 @@ impl Visitor<String> for AstPrinter {
             Expr::Literal(value) => match value {
                 None => panic!("NONE IS IT RIGHT??"),
                 Some(Value::String(s)) => s.clone(),
-                Some(Value::Number(n)) => n.to_string(),
+                Some(Value::Number(n)) => format!("{:?}", n),
                 Some(Value::Boolean(b)) => b.to_string(),
                 Some(Value::Nil) => String::from("nil"),
             },
@@ -60,6 +62,21 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_print_number_without_fraction_ok() -> Result<()> {
+        // -- Setup & Fixtures
+        let expr = Expr::Literal(Some(Value::Number(123.0)));
+
+        // -- Exec
+        let printer = AstPrinter::default();
+        let result = printer.print(expr);
+
+        // -- Check
+        assert_eq!(result, "123.0");
+
+        Ok(())
+    }
+
+    #[test]
     fn test_print_expr_ok() -> Result<()> {
         // -- Setup & Fixtures
         let expr = Expr::Binary {
@@ -78,7 +95,7 @@ mod tests {
         let result = printer.print(expr);
 
         // -- Check
-        assert_eq!(result, "(* (- 123) (group 45.67))");
+        assert_eq!(result, "(* (- 123.0) (group 45.67))");
 
         Ok(())
     }
