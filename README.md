@@ -1,9 +1,7 @@
-[![progress-banner](https://backend.codecrafters.io/progress/interpreter/1d951af6-974d-464e-bb6a-a299407bc65e)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
-
-This is a starting point for Rust solutions to the
-["Build your own Interpreter" Challenge](https://app.codecrafters.io/courses/interpreter/overview).
+# About
 
 This challenge follows the book
+
 [Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom.
 
 In this challenge you'll build an interpreter for
@@ -27,25 +25,37 @@ challenge. This challenge will start from chapter 4,
 **Note**: If you're viewing this repo on GitHub, head over to
 [codecrafters.io](https://codecrafters.io) to try the challenge.
 
-# Passing the first stage
+## Dev setup
 
-The entry point for your program is in `src/main.rs`. Study and uncomment the
-relevant code, and push your changes to pass the first stage:
+Firstly install `cargo-watch`
 
 ```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+cargo install cargo-watch
 ```
 
-Time to move on to the next stage!
+### For execution app on save, use command
 
-# Stage 2 & beyond
+```sh
+cargo watch -q -c -w src/ -w .cargo/ -x run
+```
 
-Note: This section is for stages 2 and beyond.
+### For execution test app on save, use command
 
-1. Ensure you have `cargo (1.82)` installed locally
-2. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.rs`. This command compiles your Rust project, so it might be slow
-   the first time you run it. Subsequent runs will be fast.
-3. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+```sh
+cargo watch -q -c -w examples/ -w .cargo/ -x "run --example quick-dev"
+```
+
+### For execution tests on save, use command
+
+```sh
+cargo watch -q -c -x "test -q -- --nocapture"
+```
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.

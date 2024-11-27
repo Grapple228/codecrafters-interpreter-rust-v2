@@ -1,11 +1,25 @@
 [package]
-name = "codecrafters-interpreter"
+name = "interpreter"
 version = "0.1.0"
-authors = ["Codecrafters <hello@codecrafters.io>"]
 edition = "2021"
+description = ""
+authors = ["Grapple228"]
 rust-version = "1.80"
 
+[lints.rust]
+unsafe_code = "forbid"
+unused = { level = "allow", priority = -1 } # For exploratory dev.
+
 [dependencies]
-anyhow = "1.0.68"                                # error handling
+# Async
+tokio = { version = "1", features = ["full"] }
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+#Other
+derive_more = {version = "1", features = ["from"] }
 bytes = "1.3.0"                                  # helps manage buffers
 thiserror = "1.0.38"                             # error handling
+
+[dev-dependencies]
+anyhow = "1"

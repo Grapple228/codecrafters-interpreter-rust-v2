@@ -1,12 +1,21 @@
+pub type Result<T> = core::result::Result<T, Error>;
+
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 
-fn main() {
+use interpreter::Error;
+use interpreter::Scanner;
+
+fn main() -> Result<()> {
+    interpreter::init();
+
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        writeln!(io::stderr(), "Usage: {} tokenize <filename>", args[0]).unwrap();
-        return;
+        Err(Error::ProgramExecutionError(format!(
+            "Usage: {} tokenize <filename>",
+            args[0]
+        )))?;
     }
 
     let command = &args[1];
@@ -14,24 +23,18 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
+            let mut scanner = Scanner::new(filename)?;
 
-            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
-                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
-                String::new()
-            });
+            scanner.scan_tokens()?;
 
-            // Uncomment this block to pass the first stage
-            // if !file_contents.is_empty() {
-            //     panic!("Scanner not implemented");
-            // } else {
-            //     println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
-            // }
+            let tokens = scanner.tokens();
+
+            for token in tokens {
+                println!("{}", token);
+            }
+
+            Ok(())
         }
-        _ => {
-            writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
-            return;
-        }
+        _ => Err(Error::UnknownCommand(args[0].to_string()))?,
     }
 }
