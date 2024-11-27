@@ -13,6 +13,9 @@ pub enum Error {
     UnknownCommand(String),
     ProgramExecutionError(String),
 
+    RuntimeError(String, usize),
+    CompileError(String, usize),
+
     // -- Modules
 
     // -- Externals
