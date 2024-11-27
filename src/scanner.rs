@@ -137,9 +137,31 @@ impl Scanner {
             '\n' => {
                 self.line += 1;
             }
+            '"' => self.string(),
 
             _ => self.error(format!("Unexpected character: {}", c)),
         }
+    }
+
+    fn string(&mut self) {
+        while self.peek() != '"' && !self.is_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.is_end() {
+            self.error("Unterminated string.".to_string());
+            return;
+        }
+
+        // The closing quote
+        self.advance();
+
+        let value = self.source.substring(self.start + 1, self.current - 1);
+
+        self.add_token_literal(TokenType::STRING, Some(value));
     }
 
     fn expect(&mut self, c: char) -> bool {
