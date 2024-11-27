@@ -18,7 +18,7 @@ mod token;
 pub use config::config;
 pub use error::{Error, Result, SourceError};
 pub use scanner::Scanner;
-pub use string_ext::StringExt;
+pub use string_ext::{CharExt, StringExt};
 pub use token::{Token, TokenType};
 
 // endregion: --- Modules

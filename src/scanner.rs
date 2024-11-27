@@ -3,7 +3,7 @@ use std::{fs, path::Path};
 use tracing::{debug, info};
 
 use crate::token::Value;
-use crate::{Error, Result, SourceError, TokenType};
+use crate::{CharExt, Error, Result, SourceError, TokenType};
 use crate::{StringExt, Token};
 
 #[derive(Debug, Default)]
@@ -149,8 +149,10 @@ impl Scanner {
             '"' => self.string(),
 
             other => {
-                if other.is_digit(10) {
+                if other.is_ascii_digit() {
                     self.number()?;
+                } else if other.is_alpha() {
+                    self.identifier();
                 } else {
                     self.error(format!("Unexpected character: {}", c))
                 }
@@ -158,6 +160,14 @@ impl Scanner {
         }
 
         Ok(())
+    }
+
+    fn identifier(&mut self) {
+        while self.peek().is_alpha_numeric() {
+            self.advance();
+        }
+
+        self.add_token(TokenType::IDENTIFIER);
     }
 
     fn number(&mut self) -> Result<()> {
@@ -249,7 +259,7 @@ mod tests {
     fn test_empty_file_ok() -> Result<()> {
         // Fixtures
         let fx_content = "";
-        let fx_tokens = vec![Token::eof(1)];
+        let fx_tokens = vec!["EOF  null"];
 
         // Init
         let mut scanner = Scanner::from_source(fx_content.to_string());
@@ -260,18 +270,26 @@ mod tests {
 
         // Check
         assert_eq!(tokens.len(), fx_tokens.len());
-        assert_eq!(tokens, fx_tokens);
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
 
         Ok(())
     }
 
     #[test]
-    fn test_number_ok() -> Result<()> {
+    fn test_identifier_ok() -> Result<()> {
         // Fixtures
-        let fx_content = "42";
+        let fx_content = "foo bar _hello";
         let fx_tokens = vec![
-            Token::new(TokenType::NUMBER, "42", Some(Value::Number(42.0)), 1),
-            Token::eof(1),
+            "IDENTIFIER foo null",
+            "IDENTIFIER bar null",
+            "IDENTIFIER _hello null",
+            "EOF  null",
         ];
 
         // Init
@@ -283,7 +301,91 @@ mod tests {
 
         // Check
         assert_eq!(tokens.len(), fx_tokens.len());
-        assert_eq!(tokens, fx_tokens);
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_comment_ok() -> Result<()> {
+        // Fixtures
+        let fx_content = "// Hello\n42";
+        let fx_tokens = vec!["NUMBER 42 42.0", "EOF  null"];
+
+        // Init
+        let mut scanner = Scanner::from_source(fx_content.to_string());
+
+        scanner.scan_tokens()?;
+
+        let tokens = scanner.tokens();
+
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_number_ok() -> Result<()> {
+        // Fixtures
+        let fx_content = "42";
+        let fx_tokens = vec!["NUMBER 42 42.0", "EOF  null"];
+
+        // Init
+        let mut scanner = Scanner::from_source(fx_content.to_string());
+
+        scanner.scan_tokens()?;
+
+        let tokens = scanner.tokens();
+
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_string_ok() -> Result<()> {
+        // Fixtures
+        let fx_content = "\"foo\"";
+        let fx_tokens = vec!["STRING \"foo\" foo", "EOF  null"];
+
+        // Init
+        let mut scanner = Scanner::from_source(fx_content.to_string());
+
+        scanner.scan_tokens()?;
+
+        let tokens = scanner.tokens();
+
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
 
         Ok(())
     }
@@ -293,15 +395,15 @@ mod tests {
         // Fixtures
         let fx_content = "(({{){})";
         let fx_tokens = vec![
-            Token::new(TokenType::LEFT_PAREN, "(", None, 1),
-            Token::new(TokenType::LEFT_PAREN, "(", None, 1),
-            Token::new(TokenType::LEFT_BRACE, "{", None, 1),
-            Token::new(TokenType::LEFT_BRACE, "{", None, 1),
-            Token::new(TokenType::RIGHT_PAREN, ")", None, 1),
-            Token::new(TokenType::LEFT_BRACE, "{", None, 1),
-            Token::new(TokenType::RIGHT_BRACE, "}", None, 1),
-            Token::new(TokenType::RIGHT_PAREN, ")", None, 1),
-            Token::eof(1),
+            "LEFT_PAREN ( null",
+            "LEFT_PAREN ( null",
+            "LEFT_BRACE { null",
+            "LEFT_BRACE { null",
+            "RIGHT_PAREN ) null",
+            "LEFT_BRACE { null",
+            "RIGHT_BRACE } null",
+            "RIGHT_PAREN ) null",
+            "EOF  null",
         ];
 
         // Init
@@ -313,7 +415,13 @@ mod tests {
 
         // Check
         assert_eq!(tokens.len(), fx_tokens.len());
-        assert_eq!(tokens, fx_tokens);
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
 
         Ok(())
     }
@@ -328,10 +436,10 @@ mod tests {
         ];
 
         let fx_tokens = vec![
-            Token::new(TokenType::COMMA, ",", None, 1),
-            Token::new(TokenType::DOT, ".", None, 1),
-            Token::new(TokenType::LEFT_PAREN, "(", None, 1),
-            Token::eof(1),
+            "COMMA , null",
+            "DOT . null",
+            "LEFT_PAREN ( null",
+            "EOF  null",
         ];
 
         // Init
@@ -346,7 +454,13 @@ mod tests {
         assert_eq!(errors.len(), fx_errors.len());
         assert_eq!(tokens.len(), fx_tokens.len());
 
-        assert_eq!(tokens, fx_tokens);
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
         assert_eq!(errors, fx_errors);
 
         Ok(())
@@ -358,14 +472,14 @@ mod tests {
         let fx_content = "<<=>>=!!===";
 
         let fx_tokens = vec![
-            Token::new(TokenType::LESS, "<", None, 1),
-            Token::new(TokenType::LESS_EQUAL, "<=", None, 1),
-            Token::new(TokenType::GREATER, ">", None, 1),
-            Token::new(TokenType::GREATER_EQUAL, ">=", None, 1),
-            Token::new(TokenType::BANG, "!", None, 1),
-            Token::new(TokenType::BANG_EQUAL, "!=", None, 1),
-            Token::new(TokenType::EQUAL_EQUAL, "==", None, 1),
-            Token::eof(1),
+            "LESS < null",
+            "LESS_EQUAL <= null",
+            "GREATER > null",
+            "GREATER_EQUAL >= null",
+            "BANG ! null",
+            "BANG_EQUAL != null",
+            "EQUAL_EQUAL == null",
+            "EOF  null",
         ];
 
         // Init
@@ -377,7 +491,13 @@ mod tests {
 
         // Check
         assert_eq!(tokens.len(), fx_tokens.len());
-        assert_eq!(tokens, fx_tokens);
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
 
         Ok(())
     }
