@@ -110,6 +110,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "derive_more",
+ "lazy_static",
  "thiserror",
  "tokio",
  "tracing",

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{fs, path::Path};
 
 use tracing::{debug, info};
@@ -5,6 +6,32 @@ use tracing::{debug, info};
 use crate::token::Value;
 use crate::{CharExt, Error, Result, SourceError, TokenType};
 use crate::{StringExt, Token};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref KEYWORDS: HashMap<&'static str, TokenType> = {
+        let mut hm = HashMap::new();
+
+        hm.insert("and", TokenType::AND);
+        hm.insert("class", TokenType::CLASS);
+        hm.insert("else", TokenType::ELSE);
+        hm.insert("false", TokenType::FALSE);
+        hm.insert("for", TokenType::FOR);
+        hm.insert("fun", TokenType::FUN);
+        hm.insert("if", TokenType::IF);
+        hm.insert("nil", TokenType::NIL);
+        hm.insert("or", TokenType::OR);
+        hm.insert("print", TokenType::PRINT);
+        hm.insert("return", TokenType::RETURN);
+        hm.insert("super", TokenType::SUPER);
+        hm.insert("this", TokenType::THIS);
+        hm.insert("true", TokenType::TRUE);
+        hm.insert("var", TokenType::VAR);
+        hm.insert("while", TokenType::WHILE);
+
+        hm
+    };
+}
 
 #[derive(Debug, Default)]
 pub struct Scanner {
@@ -167,7 +194,13 @@ impl Scanner {
             self.advance();
         }
 
-        self.add_token(TokenType::IDENTIFIER);
+        let lexeme = self.source.substring(self.start, self.current);
+        let token_type = KEYWORDS
+            .get(lexeme.as_str())
+            .cloned()
+            .unwrap_or(TokenType::IDENTIFIER);
+
+        self.add_token(token_type);
     }
 
     fn number(&mut self) -> Result<()> {
@@ -284,11 +317,42 @@ mod tests {
     #[test]
     fn test_identifier_ok() -> Result<()> {
         // Fixtures
-        let fx_content = "foo bar _hello";
+        let fx_content = "fo3o ba2r _hello_";
         let fx_tokens = vec![
-            "IDENTIFIER foo null",
-            "IDENTIFIER bar null",
-            "IDENTIFIER _hello null",
+            "IDENTIFIER fo3o null",
+            "IDENTIFIER ba2r null",
+            "IDENTIFIER _hello_ null",
+            "EOF  null",
+        ];
+
+        // Init
+        let mut scanner = Scanner::from_source(fx_content.to_string());
+
+        scanner.scan_tokens()?;
+
+        let tokens = scanner.tokens();
+
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<String>>(),
+            fx_tokens
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_reserved_ok() -> Result<()> {
+        // Fixtures
+        let fx_content = "fun class _hello_";
+        let fx_tokens = vec![
+            "FUN fun null",
+            "CLASS class null",
+            "IDENTIFIER _hello_ null",
             "EOF  null",
         ];
 
@@ -427,7 +491,7 @@ mod tests {
     }
 
     #[test]
-    fn test_error_std_ok() -> Result<()> {
+    fn test_error_ok() -> Result<()> {
         // Fixtures
         let fx_content = ",.$(#";
         let fx_errors = vec![
