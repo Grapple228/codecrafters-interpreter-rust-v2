@@ -35,6 +35,9 @@ pub enum Error {
     // -- Externals
     #[from]
     IoError(std::io::Error),
+
+    #[from]
+    ParseFloatError(std::num::ParseFloatError),
 }
 
 // region:    --- Error Boilerplate

@@ -58,15 +58,34 @@ pub enum TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    pub literal: Option<String>,
+    pub literal: Option<Value>,
     pub line: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Value {
+    String(String),
+    Number(f64),
+    Boolean(bool),
+    Nil,
+}
+
+impl core::fmt::Display for Value {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+        match self {
+            Value::String(s) => write!(fmt, "{}", s),
+            Value::Number(n) => write!(fmt, "{:?}", n),
+            Value::Boolean(b) => write!(fmt, "{}", b),
+            Value::Nil => write!(fmt, "nil"),
+        }
+    }
 }
 
 impl Token {
     pub fn new(
         token_type: TokenType,
         lexeme: impl Into<String>,
-        literal: Option<String>,
+        literal: Option<Value>,
         line: usize,
     ) -> Token {
         Token {
@@ -90,7 +109,7 @@ impl Token {
 impl core::fmt::Display for Token {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
         let literal = if let Some(literal) = self.literal.clone() {
-            literal
+            literal.to_string()
         } else {
             String::from("null")
         };

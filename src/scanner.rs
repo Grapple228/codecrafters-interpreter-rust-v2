@@ -2,6 +2,7 @@ use std::{fs, path::Path};
 
 use tracing::{debug, info};
 
+use crate::token::Value;
 use crate::{Error, Result, SourceError, TokenType};
 use crate::{StringExt, Token};
 
@@ -62,18 +63,26 @@ impl Scanner {
         self.source.char_at(self.current)
     }
 
+    fn peek_next(&mut self) -> char {
+        if self.current + 1 >= self.source.len() {
+            return '\0';
+        }
+
+        self.source.char_at(self.current + 1)
+    }
+
     fn add_token(&mut self, token_type: TokenType) {
         self.add_token_literal(token_type, None)
     }
 
-    fn add_token_literal(&mut self, token_type: TokenType, literal: Option<String>) {
+    fn add_token_literal(&mut self, token_type: TokenType, literal: Option<Value>) {
         let lexeme = self.source.substring(self.start, self.current);
 
         self.tokens
             .push(Token::new(token_type, lexeme, literal, self.line));
     }
 
-    fn scan_token(&mut self) {
+    fn scan_token(&mut self) -> Result<()> {
         let c = self.advance();
 
         match c {
@@ -139,8 +148,38 @@ impl Scanner {
             }
             '"' => self.string(),
 
-            _ => self.error(format!("Unexpected character: {}", c)),
+            other => {
+                if other.is_digit(10) {
+                    self.number()?;
+                } else {
+                    self.error(format!("Unexpected character: {}", c))
+                }
+            }
         }
+
+        Ok(())
+    }
+
+    fn number(&mut self) -> Result<()> {
+        while self.peek().is_digit(10) {
+            self.advance();
+        }
+
+        // Look for a fractional part
+        if self.peek() == '.' && self.peek_next().is_digit(10) {
+            // Consume the "."
+            self.advance();
+
+            while self.peek().is_digit(10) {
+                self.advance();
+            }
+        };
+
+        let value = self.source.substring(self.start, self.current);
+
+        self.add_token_literal(TokenType::NUMBER, Some(Value::Number(value.parse()?)));
+
+        Ok(())
     }
 
     fn string(&mut self) {
@@ -161,7 +200,7 @@ impl Scanner {
 
         let value = self.source.substring(self.start + 1, self.current - 1);
 
-        self.add_token_literal(TokenType::STRING, Some(value));
+        self.add_token_literal(TokenType::STRING, Some(Value::String(value)));
     }
 
     fn expect(&mut self, c: char) -> bool {
@@ -211,6 +250,29 @@ mod tests {
         // Fixtures
         let fx_content = "";
         let fx_tokens = vec![Token::eof(1)];
+
+        // Init
+        let mut scanner = Scanner::from_source(fx_content.to_string());
+
+        scanner.scan_tokens()?;
+
+        let tokens = scanner.tokens();
+
+        // Check
+        assert_eq!(tokens.len(), fx_tokens.len());
+        assert_eq!(tokens, fx_tokens);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_number_ok() -> Result<()> {
+        // Fixtures
+        let fx_content = "42";
+        let fx_tokens = vec![
+            Token::new(TokenType::NUMBER, "42", Some(Value::Number(42.0)), 1),
+            Token::eof(1),
+        ];
 
         // Init
         let mut scanner = Scanner::from_source(fx_content.to_string());
