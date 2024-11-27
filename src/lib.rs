@@ -10,16 +10,24 @@ use tracing_subscriber::EnvFilter;
 // -- Modules
 mod config;
 mod error;
+mod parser;
+mod printer;
 mod scanner;
 mod string_ext;
 mod token;
+mod tree;
+mod visitor;
 
 // -- Flatten
 pub use config::config;
 pub use error::{Error, Result, SourceError};
+pub use parser::Parser;
+pub use printer::AstPrinter;
 pub use scanner::Scanner;
 pub use string_ext::{CharExt, StringExt};
-pub use token::{Token, TokenType};
+pub use token::{Token, TokenType, Value};
+pub use tree::{Expr, Stmt};
+pub use visitor::Visitor;
 
 // endregion: --- Modules
 
