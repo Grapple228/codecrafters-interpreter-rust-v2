@@ -2,27 +2,8 @@ use std::{fs, path::Path};
 
 use tracing::{debug, info};
 
-use crate::{Error, Result, TokenType};
+use crate::{Error, Result, SourceError, TokenType};
 use crate::{StringExt, Token};
-
-#[derive(Debug, Clone)]
-pub enum SourceError {
-    RuntimeError(String, usize),
-    CompileError(String, usize),
-}
-
-impl std::fmt::Display for SourceError {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            SourceError::CompileError(content, line) => {
-                write!(fmt, "[line {}] Error: {}", line, content)
-            }
-            SourceError::RuntimeError(content, line) => {
-                write!(fmt, "[line {}] Runtime Error: {}", line, content)
-            }
-        }
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct Scanner {
@@ -57,9 +38,8 @@ impl Scanner {
         self.errors.len() != 0
     }
 
-    fn error(&mut self, message: impl Into<String>) {
-        self.errors
-            .push(SourceError::CompileError(message.into(), self.line));
+    fn error(&mut self, message: String) {
+        self.errors.push(SourceError::Lexical(message, self.line));
     }
 
     fn is_end(&self) -> bool {
@@ -99,9 +79,55 @@ impl Scanner {
             '+' => self.add_token(TokenType::PLUS),
             ';' => self.add_token(TokenType::SEMICOLON),
             '*' => self.add_token(TokenType::STAR),
+            '!' => {
+                let token = if self.expect('=') {
+                    TokenType::BANG_EQUAL
+                } else {
+                    TokenType::BANG
+                };
+
+                self.add_token(token)
+            }
+            '=' => {
+                let token = if self.expect('=') {
+                    TokenType::EQUAL_EQUAL
+                } else {
+                    TokenType::EQUAL
+                };
+                self.add_token(token)
+            }
+            '<' => {
+                let token = if self.expect('=') {
+                    TokenType::LESS_EQUAL
+                } else {
+                    TokenType::LESS
+                };
+                self.add_token(token)
+            }
+            '>' => {
+                let token = if self.expect('=') {
+                    TokenType::GREATER_EQUAL
+                } else {
+                    TokenType::GREATER
+                };
+                self.add_token(token)
+            }
 
             _ => self.error(format!("Unexpected character: {}", c)),
         }
+    }
+
+    fn expect(&mut self, c: char) -> bool {
+        if self.is_end() {
+            return false;
+        }
+
+        if self.source.char_at(self.current) != c {
+            return false;
+        }
+
+        self.current += 1;
+        true
     }
 
     pub fn scan_tokens(&mut self) -> Result<()> {
@@ -145,7 +171,7 @@ mod tests {
 
         assert_eq!(tokens.len(), 1);
 
-        assert_eq!(tokens, vec![Token::eof(0)]);
+        assert_eq!(tokens, vec![Token::eof(1)]);
 
         Ok(())
     }
@@ -154,15 +180,15 @@ mod tests {
     fn test_parenthesis_ok() -> Result<()> {
         let fx_content = "(({{){})";
         let fx_tokens = vec![
-            Token::new(TokenType::LEFT_PAREN, "(", None, 0),
-            Token::new(TokenType::LEFT_PAREN, "(", None, 0),
-            Token::new(TokenType::LEFT_BRACE, "{", None, 0),
-            Token::new(TokenType::LEFT_BRACE, "{", None, 0),
-            Token::new(TokenType::RIGHT_PAREN, ")", None, 0),
-            Token::new(TokenType::LEFT_BRACE, "{", None, 0),
-            Token::new(TokenType::RIGHT_BRACE, "}", None, 0),
-            Token::new(TokenType::RIGHT_PAREN, ")", None, 0),
-            Token::eof(0),
+            Token::new(TokenType::LEFT_PAREN, "(", None, 1),
+            Token::new(TokenType::LEFT_PAREN, "(", None, 1),
+            Token::new(TokenType::LEFT_BRACE, "{", None, 1),
+            Token::new(TokenType::LEFT_BRACE, "{", None, 1),
+            Token::new(TokenType::RIGHT_PAREN, ")", None, 1),
+            Token::new(TokenType::LEFT_BRACE, "{", None, 1),
+            Token::new(TokenType::RIGHT_BRACE, "}", None, 1),
+            Token::new(TokenType::RIGHT_PAREN, ")", None, 1),
+            Token::eof(1),
         ];
 
         let mut scanner = Scanner::from_source(fx_content.to_string());
@@ -174,6 +200,36 @@ mod tests {
         assert_eq!(tokens.len(), 9);
 
         assert_eq!(tokens, fx_tokens);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_error_std_ok() -> Result<()> {
+        let fx_content = ",.$(#";
+        let fx_errors = vec![
+            SourceError::Lexical("Unexpected character: $".to_string(), 1),
+            SourceError::Lexical("Unexpected character: #".to_string(), 1),
+        ];
+
+        let fx_tokens = vec![
+            Token::new(TokenType::COMMA, ",", None, 1),
+            Token::new(TokenType::DOT, ".", None, 1),
+            Token::new(TokenType::LEFT_PAREN, "(", None, 1),
+            Token::eof(1),
+        ];
+
+        let mut scanner = Scanner::from_source(fx_content.to_string());
+
+        scanner.scan_tokens()?;
+
+        let tokens = scanner.tokens();
+        let errors = scanner.errors();
+
+        assert_eq!(tokens.len(), 4);
+
+        assert_eq!(tokens, fx_tokens);
+        assert_eq!(errors, fx_errors);
 
         Ok(())
     }

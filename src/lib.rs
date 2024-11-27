@@ -16,7 +16,7 @@ mod token;
 
 // -- Flatten
 pub use config::config;
-pub use error::{Error, Result};
+pub use error::{Error, Result, SourceError};
 pub use scanner::Scanner;
 pub use string_ext::StringExt;
 pub use token::{Token, TokenType};
