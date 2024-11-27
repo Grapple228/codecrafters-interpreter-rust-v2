@@ -1,5 +1,7 @@
 #![allow(unused)] // For beginning only.
 
+use std::{io::stderr, process};
+
 use anyhow::Result;
 use interpreter::Scanner;
 use tracing::info;
@@ -11,10 +13,16 @@ fn main() -> Result<()> {
 
     scanner.scan_tokens()?;
 
-    let tokens = scanner.tokens();
+    for error in scanner.errors() {
+        eprintln!("{}", error);
+    }
 
-    for token in tokens {
+    for token in scanner.tokens() {
         println!("{}", token);
+    }
+
+    if scanner.has_error() {
+        process::exit(65)
     }
 
     Ok(())

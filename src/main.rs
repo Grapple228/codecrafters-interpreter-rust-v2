@@ -3,6 +3,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::process;
 
 use interpreter::Error;
 use interpreter::Scanner;
@@ -23,14 +24,20 @@ fn main() -> Result<()> {
 
     match command.as_str() {
         "tokenize" => {
-            let mut scanner = Scanner::new(filename)?;
+            let mut scanner = Scanner::new("test.lox")?;
 
             scanner.scan_tokens()?;
 
-            let tokens = scanner.tokens();
+            for error in scanner.errors() {
+                eprintln!("{}", error);
+            }
 
-            for token in tokens {
+            for token in scanner.tokens() {
                 println!("{}", token);
+            }
+
+            if scanner.has_error() {
+                process::exit(65)
             }
 
             Ok(())

@@ -5,6 +5,25 @@ use tracing::{debug, info};
 use crate::{Error, Result, TokenType};
 use crate::{StringExt, Token};
 
+#[derive(Debug, Clone)]
+pub enum SourceError {
+    RuntimeError(String, usize),
+    CompileError(String, usize),
+}
+
+impl std::fmt::Display for SourceError {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SourceError::CompileError(content, line) => {
+                write!(fmt, "[line {}] Error: {}", line, content)
+            }
+            SourceError::RuntimeError(content, line) => {
+                write!(fmt, "[line {}] Runtime Error: {}", line, content)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Scanner {
     source: String,
@@ -12,7 +31,7 @@ pub struct Scanner {
     current: usize,
     line: usize,
     tokens: Vec<Token>,
-    errors: Vec<Error>,
+    errors: Vec<SourceError>,
 }
 
 impl Scanner {
@@ -20,6 +39,7 @@ impl Scanner {
     pub fn from_source(source: impl Into<String>) -> Scanner {
         Scanner {
             source: source.into(),
+            line: 1,
             ..Default::default()
         }
     }
@@ -28,13 +48,18 @@ impl Scanner {
     pub fn new(path: impl AsRef<Path>) -> Result<Scanner> {
         Ok(Scanner {
             source: fs::read_to_string(path)?,
+            line: 1,
             ..Default::default()
         })
     }
 
+    pub fn has_error(&self) -> bool {
+        self.errors.len() != 0
+    }
+
     fn error(&mut self, message: impl Into<String>) {
         self.errors
-            .push(Error::CompileError(message.into(), self.line));
+            .push(SourceError::CompileError(message.into(), self.line));
     }
 
     fn is_end(&self) -> bool {
@@ -75,7 +100,7 @@ impl Scanner {
             ';' => self.add_token(TokenType::SEMICOLON),
             '*' => self.add_token(TokenType::STAR),
 
-            _ => todo!(),
+            _ => self.error(format!("Unexpected character: {}", c)),
         }
     }
 
@@ -94,6 +119,10 @@ impl Scanner {
 
     pub fn tokens(&self) -> Vec<Token> {
         self.tokens.clone()
+    }
+
+    pub fn errors(&self) -> Vec<SourceError> {
+        self.errors.clone()
     }
 }
 

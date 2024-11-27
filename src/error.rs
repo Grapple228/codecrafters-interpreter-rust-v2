@@ -13,14 +13,11 @@ pub enum Error {
     UnknownCommand(String),
     ProgramExecutionError(String),
 
-    RuntimeError(String, usize),
-    CompileError(String, usize),
-
     // -- Modules
 
     // -- Externals
     #[from]
-    Io(std::io::Error), // as example
+    IoError(std::io::Error),
 }
 
 // region:    --- Error Boilerplate
