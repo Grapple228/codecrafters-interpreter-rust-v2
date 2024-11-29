@@ -1,8 +1,8 @@
 use tracing::debug;
 
-use crate::{token::Value, visitor, Token, Visitor};
+use crate::{visitor, Token, Value, Visitor};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Binary {
         left: Box<Expr>,
@@ -17,7 +17,7 @@ pub enum Expr {
     },
 }
 impl Expr {
-    pub fn accept(&self, visitor: &impl Visitor<String>) -> String {
+    pub fn accept<T>(&self, visitor: &impl Visitor<T>) -> T {
         visitor.visit(self)
     }
 }

@@ -10,23 +10,26 @@ use tracing_subscriber::{fmt::format, EnvFilter};
 // -- Modules
 mod config;
 mod error;
+mod extensions;
+mod interpreter;
 mod parser;
 mod printer;
 mod scanner;
-mod string_ext;
 mod token;
 mod tree;
+mod value;
 mod visitor;
 
 // -- Flatten
 pub use config::config;
 pub use error::{Error, Result};
+pub use interpreter::Interpreter;
 pub use parser::Parser;
 pub use printer::AstPrinter;
 pub use scanner::Scanner;
-pub use string_ext::{CharExt, StringExt};
-pub use token::{Token, TokenType, Value};
+pub use token::{Token, TokenType};
 pub use tree::{Expr, Stmt};
+pub use value::Value;
 pub use visitor::Visitor;
 
 // endregion: --- Modules

@@ -1,6 +1,6 @@
 use tracing::{debug, info};
 
-use crate::{token::Value, tree::Expr, Token, TokenType, Visitor};
+use crate::{tree::Expr, Token, TokenType, Value, Visitor};
 
 mod error;
 
@@ -10,6 +10,7 @@ pub use error::{Error, Result};
 pub struct Parser {
     current: usize,
     tokens: Vec<Token>,
+    had_error: bool,
 }
 
 impl Parser {
@@ -27,10 +28,15 @@ impl Parser {
         match result {
             Ok(expr) => Ok(expr),
             Err(e) => {
+                self.had_error = true;
                 Self::error(e.clone());
                 Err(e)
             }
         }
+    }
+
+    pub fn had_error(&self) -> bool {
+        self.had_error
     }
 
     fn error(error: Error) {
@@ -264,6 +270,38 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_true_ok() -> Result<()> {
+        // -- Setup & Fixtures
+        let tokens = vec![Token::new(TokenType::TRUE, "true", None, 1), Token::eof(1)];
+
+        // -- Exec
+        let mut parser = Parser::new(&tokens);
+        let expr = parser.parse()?;
+
+        // -- Check
+        assert_eq!(expr, Expr::Literal(Some(Value::Boolean(true))));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_false_ok() -> Result<()> {
+        // -- Setup & Fixtures
+        let tokens = vec![
+            Token::new(TokenType::FALSE, "false", None, 1),
+            Token::eof(1),
+        ];
+
+        // -- Exec
+        let mut parser = Parser::new(&tokens);
+        let expr = parser.parse()?;
+
+        // -- Check
+        assert_eq!(expr, Expr::Literal(Some(Value::Boolean(false))));
+
+        Ok(())
+    }
+    #[test]
     fn test_parse_nubmer_sum_ok() -> Result<()> {
         // -- Setup & Fixtures
         let tokens = vec![
@@ -283,6 +321,33 @@ mod tests {
             Expr::Binary {
                 left: Box::new(Expr::Literal(Some(Value::Number(5.5)))),
                 operator: Token::new(TokenType::PLUS, "+", None, 1),
+                right: Box::new(Expr::Literal(Some(Value::Number(6.6)))),
+            }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_nubmer_multiply_ok() -> Result<()> {
+        // -- Setup & Fixtures
+        let tokens = vec![
+            Token::new(TokenType::NUMBER, "5.5", Some(Value::Number(5.5)), 1),
+            Token::new(TokenType::PLUS, "*", None, 1),
+            Token::new(TokenType::NUMBER, "6.6", Some(Value::Number(6.6)), 1),
+            Token::eof(1),
+        ];
+
+        // -- Exec
+        let mut parser = Parser::new(&tokens);
+        let expr = parser.parse()?;
+
+        // -- Check
+        assert_eq!(
+            expr,
+            Expr::Binary {
+                left: Box::new(Expr::Literal(Some(Value::Number(5.5)))),
+                operator: Token::new(TokenType::PLUS, "*", None, 1),
                 right: Box::new(Expr::Literal(Some(Value::Number(6.6)))),
             }
         );

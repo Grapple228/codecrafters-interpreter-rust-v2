@@ -7,6 +7,7 @@ use std::process;
 
 use interpreter::AstPrinter;
 use interpreter::Error;
+use interpreter::Interpreter;
 use interpreter::Parser;
 use interpreter::Scanner;
 
@@ -30,6 +31,9 @@ fn main() -> Result<()> {
         }
         "parse" => {
             parse(filename)?;
+        }
+        "evaluate" => {
+            evaluate(filename)?;
         }
         _ => Err(Error::UnknownCommand(args[0].to_string()))?,
     }
@@ -73,6 +77,35 @@ fn parse(filename: &str) -> Result<()> {
             println!("{}", result);
         }
         Err(e) => process::exit(65),
+    }
+
+    Ok(())
+}
+
+fn evaluate(filename: &str) -> Result<()> {
+    let mut scanner = Scanner::new(filename)?;
+
+    scanner.scan_tokens()?;
+
+    if scanner.had_error() {
+        process::exit(65)
+    }
+
+    let mut parser = Parser::new(&scanner.tokens());
+    let expr = parser.parse();
+
+    if parser.had_error() {
+        process::exit(65)
+    }
+
+    let mut interpreter = Interpreter::default();
+    let result = interpreter.interpret(expr?);
+
+    match result {
+        Ok(value) => {
+            println!("{}", value);
+        }
+        Err(e) => process::exit(70),
     }
 
     Ok(())

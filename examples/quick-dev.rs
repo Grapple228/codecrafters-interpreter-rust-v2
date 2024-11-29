@@ -3,7 +3,7 @@
 use std::{io::stderr, process};
 
 use anyhow::Result;
-use interpreter::{AstPrinter, Expr, Parser, Scanner, Token, TokenType, Value};
+use interpreter::{AstPrinter, Expr, Interpreter, Parser, Scanner, Token, TokenType, Value};
 use tracing::debug;
 
 fn main() -> Result<()> {
@@ -24,7 +24,7 @@ fn main() -> Result<()> {
     let mut parser = Parser::new(&scanner.tokens());
     let expr = parser.parse();
 
-    match expr {
+    match expr.clone() {
         Ok(expr) => {
             let printer = AstPrinter::default();
             let result = printer.print(expr);
@@ -32,6 +32,16 @@ fn main() -> Result<()> {
             println!("{}", result);
         }
         Err(e) => process::exit(65),
+    }
+
+    let mut interpreter = Interpreter::default();
+    let result = interpreter.interpret(expr?);
+
+    match result {
+        Ok(value) => {
+            println!("{}", value);
+        }
+        Err(e) => process::exit(70),
     }
 
     Ok(())

@@ -3,9 +3,10 @@ use std::{fs, path::Path};
 
 use tracing::{debug, info};
 
-use crate::token::Value;
-use crate::{report, CharExt, Error, Result, TokenType};
-use crate::{StringExt, Token};
+use crate::extensions::{CharExt, StringExt};
+use crate::Token;
+use crate::Value;
+use crate::{report, Error, Result, TokenType};
 use lazy_static::lazy_static;
 
 lazy_static! {

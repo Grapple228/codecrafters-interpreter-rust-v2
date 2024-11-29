@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use tracing_subscriber::fmt::format::Format;
 
+use crate::Value;
+
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -62,25 +64,6 @@ pub struct Token {
     pub line: usize,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Value {
-    String(String),
-    Number(f64),
-    Boolean(bool),
-    Nil,
-}
-
-impl core::fmt::Display for Value {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-        match self {
-            Value::String(s) => write!(fmt, "{}", s),
-            Value::Number(n) => write!(fmt, "{:?}", n),
-            Value::Boolean(b) => write!(fmt, "{}", b),
-            Value::Nil => write!(fmt, "nil"),
-        }
-    }
-}
-
 impl Token {
     pub fn new(
         token_type: TokenType,
@@ -115,5 +98,53 @@ impl core::fmt::Display for Token {
         };
 
         write!(fmt, "{:?} {} {}", self.token_type, self.lexeme, literal)
+    }
+}
+
+impl core::fmt::Display for TokenType {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+        let op = match self {
+            TokenType::LEFT_PAREN => "(",
+            TokenType::RIGHT_PAREN => ")",
+            TokenType::LEFT_BRACE => "{",
+            TokenType::RIGHT_BRACE => "}",
+            TokenType::COMMA => ",",
+            TokenType::DOT => ".",
+            TokenType::MINUS => "-",
+            TokenType::PLUS => "+",
+            TokenType::SEMICOLON => ";",
+            TokenType::SLASH => "/",
+            TokenType::STAR => "*",
+            TokenType::BANG => "!",
+            TokenType::BANG_EQUAL => "!=",
+            TokenType::EQUAL => "=",
+            TokenType::EQUAL_EQUAL => "==",
+            TokenType::GREATER => ">",
+            TokenType::GREATER_EQUAL => ">=",
+            TokenType::LESS => "<",
+            TokenType::LESS_EQUAL => "<=",
+            TokenType::IDENTIFIER => "IDENTIFIER",
+            TokenType::STRING => "STRING",
+            TokenType::NUMBER => "NUMBER",
+            TokenType::AND => "&",
+            TokenType::CLASS => "CLASS",
+            TokenType::ELSE => "ELSE",
+            TokenType::FALSE => "FALSE",
+            TokenType::FUN => "FUN",
+            TokenType::FOR => "FOR",
+            TokenType::IF => "IF",
+            TokenType::NIL => "NIL",
+            TokenType::OR => "OR",
+            TokenType::PRINT => "PRINT",
+            TokenType::RETURN => "RETURN",
+            TokenType::SUPER => "SUPER",
+            TokenType::THIS => "THIS",
+            TokenType::TRUE => "TRUE",
+            TokenType::VAR => "VAR",
+            TokenType::WHILE => "WHILE",
+            TokenType::EOF => "EOF",
+        };
+
+        write!(fmt, "{}", op)
     }
 }
