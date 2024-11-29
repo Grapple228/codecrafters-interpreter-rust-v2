@@ -42,15 +42,11 @@ fn tokenize(filename: &str) -> Result<()> {
 
     scanner.scan_tokens()?;
 
-    for error in scanner.errors() {
-        eprintln!("{}", error);
-    }
-
     for token in scanner.tokens() {
         println!("{}", token);
     }
 
-    if scanner.has_error() {
+    if scanner.had_error() {
         process::exit(65)
     }
 
@@ -62,21 +58,22 @@ fn parse(filename: &str) -> Result<()> {
 
     scanner.scan_tokens()?;
 
-    for error in scanner.errors() {
-        eprintln!("{}", error);
-    }
-
-    if scanner.has_error() {
+    if scanner.had_error() {
         process::exit(65)
     }
 
     let mut parser = Parser::new(&scanner.tokens());
     let expr = parser.parse();
 
-    let printer = AstPrinter::default();
-    let result = printer.print(expr);
+    match expr {
+        Ok(expr) => {
+            let printer = AstPrinter::default();
+            let result = printer.print(expr);
 
-    println!("{}", result);
+            println!("{}", result);
+        }
+        Err(e) => process::exit(65),
+    }
 
     Ok(())
 }

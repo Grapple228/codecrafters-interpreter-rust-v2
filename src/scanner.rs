@@ -4,7 +4,7 @@ use std::{fs, path::Path};
 use tracing::{debug, info};
 
 use crate::token::Value;
-use crate::{CharExt, Error, Result, SourceError, TokenType};
+use crate::{report, CharExt, Error, Result, TokenType};
 use crate::{StringExt, Token};
 use lazy_static::lazy_static;
 
@@ -40,7 +40,7 @@ pub struct Scanner {
     current: usize,
     line: usize,
     tokens: Vec<Token>,
-    errors: Vec<SourceError>,
+    had_error: bool,
 }
 
 impl Scanner {
@@ -62,12 +62,13 @@ impl Scanner {
         })
     }
 
-    pub fn has_error(&self) -> bool {
-        self.errors.len() != 0
+    pub fn had_error(&self) -> bool {
+        self.had_error
     }
 
     fn error(&mut self, message: String) {
-        self.errors.push(SourceError::Lexical(message, self.line));
+        self.had_error = true;
+        report(self.line, message);
     }
 
     fn is_end(&self) -> bool {
@@ -275,10 +276,6 @@ impl Scanner {
     pub fn tokens(&self) -> Vec<Token> {
         self.tokens.clone()
     }
-
-    pub fn errors(&self) -> Vec<SourceError> {
-        self.errors.clone()
-    }
 }
 
 // region:    --- Tests
@@ -287,6 +284,7 @@ impl Scanner {
 mod tests {
     use super::*;
     use anyhow::Result;
+    use tokio::io;
 
     #[test]
     fn test_empty_file_ok() -> Result<()> {
@@ -495,8 +493,8 @@ mod tests {
         // Fixtures
         let fx_content = ",.$(#";
         let fx_errors = vec![
-            SourceError::Lexical("Unexpected character: $".to_string(), 1),
-            SourceError::Lexical("Unexpected character: #".to_string(), 1),
+            "[line 1] Error: Unexpected character: $",
+            "[line 1] Error: Unexpected character: #",
         ];
 
         let fx_tokens = vec![
@@ -512,10 +510,9 @@ mod tests {
         scanner.scan_tokens()?;
 
         let tokens = scanner.tokens();
-        let errors = scanner.errors();
 
         // Check
-        assert_eq!(errors.len(), fx_errors.len());
+        assert!(scanner.had_error);
         assert_eq!(tokens.len(), fx_tokens.len());
 
         assert_eq!(
@@ -525,7 +522,6 @@ mod tests {
                 .collect::<Vec<String>>(),
             fx_tokens
         );
-        assert_eq!(errors, fx_errors);
 
         Ok(())
     }

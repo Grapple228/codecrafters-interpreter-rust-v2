@@ -2,10 +2,10 @@
 
 // region:    --- Modules
 
-use std::{fs, path::Path};
+use std::{fs, path::Path, usize};
 
 use tracing::{debug, info};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{fmt::format, EnvFilter};
 
 // -- Modules
 mod config;
@@ -20,7 +20,7 @@ mod visitor;
 
 // -- Flatten
 pub use config::config;
-pub use error::{Error, Result, SourceError};
+pub use error::{Error, Result};
 pub use parser::Parser;
 pub use printer::AstPrinter;
 pub use scanner::Scanner;
@@ -30,6 +30,10 @@ pub use tree::{Expr, Stmt};
 pub use visitor::Visitor;
 
 // endregion: --- Modules
+
+pub fn report(line: usize, message: impl Into<String>) {
+    eprintln!("[line {}] Error: {}", line, message.into());
+}
 
 pub fn init() -> Result<()> {
     // LOGGING INITIALIZATION

@@ -16,7 +16,6 @@ pub enum Expr {
         right: Box<Expr>,
     },
 }
-
 impl Expr {
     pub fn accept(&self, visitor: &impl Visitor<String>) -> String {
         visitor.visit(self)

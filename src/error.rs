@@ -2,24 +2,9 @@
 
 use derive_more::derive::From;
 
+use crate::parser;
+
 pub type Result<T> = core::result::Result<T, Error>;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum SourceError {
-    Lexical(String, usize),
-    Runtime(String, usize),
-}
-
-impl std::fmt::Display for SourceError {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            SourceError::Lexical(message, line) => {
-                write!(fmt, "[line {}] Error: {}", line, message)
-            }
-            SourceError::Runtime(_, _) => todo!(),
-        }
-    }
-}
 
 #[derive(Debug, From)]
 pub enum Error {
@@ -31,6 +16,8 @@ pub enum Error {
     ProgramExecutionError(String),
 
     // -- Modules
+    #[from]
+    ParserError(parser::Error),
 
     // -- Externals
     #[from]
