@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 
     match result {
         Ok(value) => {
-            println!("{}", value);
+            println!("{}", value.stringify());
         }
         Err(e) => process::exit(70),
     }

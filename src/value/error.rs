@@ -16,6 +16,10 @@ pub enum Error {
         right: Option<Value>,
         operator: TokenType,
     },
+    ZeroDivision {
+        left: Value,
+        right: Option<Value>,
+    },
 }
 
 // region:    --- Error Boilerplate

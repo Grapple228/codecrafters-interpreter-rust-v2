@@ -103,7 +103,7 @@ fn evaluate(filename: &str) -> Result<()> {
 
     match result {
         Ok(value) => {
-            println!("{}", value);
+            println!("{}", value.stringify());
         }
         Err(e) => process::exit(70),
     }
