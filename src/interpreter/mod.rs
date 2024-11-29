@@ -21,7 +21,7 @@ impl Visitor<Result<Value>> for Interpreter {
                 let left = self.evaluate(left)?;
                 let right = self.evaluate(right)?;
 
-                Ok(left.calculate(Some(&right), operator.token_type.clone())?)
+                Ok(left.calculate(Some(&right), operator.clone())?)
             }
             Expr::Grouping(expr) => self.evaluate(expr),
             Expr::Literal(value) => {
@@ -34,14 +34,14 @@ impl Visitor<Result<Value>> for Interpreter {
             Expr::Unary { operator, right } => {
                 let value = self.evaluate(right)?;
 
-                Ok(value.calculate(None, operator.token_type.clone())?)
+                Ok(value.calculate(None, operator.clone())?)
             }
         }
     }
 }
 
 impl Interpreter {
-    fn had_runtime_error(&self) -> bool {
+    pub fn had_runtime_error(&self) -> bool {
         self.had_runtime_error
     }
 
@@ -49,13 +49,14 @@ impl Interpreter {
         expr.accept(self)
     }
 
-    pub fn interpret(&self, expr: Expr) -> Result<Value> {
+    pub fn interpret(&mut self, expr: Expr) -> Result<Value> {
         info!("Interpreting tokens...");
         let value = self.evaluate(&expr);
 
         match value {
             Ok(value) => Ok(value),
             Err(e) => {
+                self.had_runtime_error = true;
                 Self::error(e.clone());
                 Err(e)
             }
@@ -68,24 +69,33 @@ impl Interpreter {
                 value::Error::InvalidOperation {
                     left,
                     right,
-                    operator,
-                } => {
-                    panic!(
-                        "Invalid operation: {} {} {}",
-                        left,
-                        operator,
-                        match right {
-                            Some(right) => right.to_string(),
-                            None => String::from("None"),
-                        }
-                    );
-                }
+                    token,
+                    message,
+                } => crate::report(token.line, message),
                 value::Error::InvalidType {
                     left,
                     right,
-                    operator,
-                } => todo!(),
-                value::Error::ZeroDivision { left, right } => todo!(),
+                    token,
+                    message,
+                } => crate::report(token.line, message),
+                value::Error::ZeroDivision {
+                    left,
+                    right,
+                    token,
+                    message,
+                } => crate::report(token.line, message),
+                value::Error::MustBeNumber {
+                    left,
+                    token,
+                    right,
+                    message,
+                } => crate::report(token.line, message),
+                value::Error::MustBeNumberOrString {
+                    left,
+                    token,
+                    right,
+                    message,
+                } => crate::report(token.line, message),
             },
         }
     }
@@ -110,7 +120,7 @@ mod tests {
             right: Box::new(Expr::Literal(Some(Value::Number(3.0)))),
         };
 
-        let interpreter = interpreter::Interpreter::default();
+        let mut interpreter = interpreter::Interpreter::default();
         let result = interpreter.interpret(expr)?;
 
         assert_eq!(result, Value::Boolean(false));
@@ -126,7 +136,7 @@ mod tests {
             right: Box::new(Expr::Literal(Some(Value::Number(3.0)))),
         };
 
-        let interpreter = interpreter::Interpreter::default();
+        let mut interpreter = interpreter::Interpreter::default();
         let result = interpreter.interpret(expr)?;
 
         assert_eq!(result, Value::Number(6.0));
@@ -142,7 +152,7 @@ mod tests {
             right: Box::new(Expr::Literal(Some(Value::String("world".to_string())))),
         };
 
-        let interpreter = interpreter::Interpreter::default();
+        let mut interpreter = interpreter::Interpreter::default();
         let result = interpreter.interpret(expr)?;
 
         assert_eq!(result, Value::String("helloworld".to_string()));
@@ -154,7 +164,7 @@ mod tests {
     fn test_evaluate_nil_ok() -> Result<()> {
         let expr = Expr::Literal(None);
 
-        let interpreter = interpreter::Interpreter::default();
+        let mut interpreter = interpreter::Interpreter::default();
         let result = interpreter.interpret(expr)?;
 
         assert_eq!(result, Value::Nil);
@@ -180,7 +190,7 @@ mod tests {
             right: Box::new(expr),
         };
 
-        let interpreter = interpreter::Interpreter::default();
+        let mut interpreter = interpreter::Interpreter::default();
         let result = interpreter.interpret(multiply)?;
 
         assert_eq!(result, Value::Number(49.0));

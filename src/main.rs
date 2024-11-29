@@ -101,6 +101,10 @@ fn evaluate(filename: &str) -> Result<()> {
     let mut interpreter = Interpreter::default();
     let result = interpreter.interpret(expr?);
 
+    if interpreter.had_runtime_error() {
+        process::exit(70)
+    }
+
     match result {
         Ok(value) => {
             println!("{}", value.stringify());

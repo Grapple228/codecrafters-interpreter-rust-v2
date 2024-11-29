@@ -1,8 +1,9 @@
 mod error;
 
 pub use error::{Error, Result};
+use tracing::debug;
 
-use crate::{extensions::StringExt, TokenType};
+use crate::{extensions::StringExt, Token, TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -49,16 +50,25 @@ impl Value {
 
     /// `other` is optional. Needed only for uperations that can be done with one operand
     /// like `!` or `-`
-    pub fn calculate(&self, other: Option<&Value>, operator: TokenType) -> Result<Self> {
+    pub fn calculate(&self, other: Option<&Value>, token: Token) -> Result<Self> {
+        let operator = token.clone().token_type;
+
         match operator {
             // -- Basic calculations
             TokenType::MINUS => match (self, other) {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Number(a - b)),
                 (Value::Number(a), None) => Ok(Value::Number(-a)),
+                (_, None) => Err(Error::MustBeNumber {
+                    left: self.clone(),
+                    token: token.clone(),
+                    right: other.cloned(),
+                    message: String::from("Operand must be a number."),
+                }),
                 _ => Err(Error::InvalidType {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with numbers."),
                 }),
             },
             TokenType::PLUS => match (self, other) {
@@ -70,7 +80,8 @@ impl Value {
                 _ => Err(Error::InvalidType {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with numbers or strings."),
                 }),
             },
             TokenType::SLASH => {
@@ -79,6 +90,8 @@ impl Value {
                         Err(Error::ZeroDivision {
                             left: self.clone(),
                             right: other.cloned(),
+                            token,
+                            message: String::from("Cannot divide by zero."),
                         })
                     } else {
                         Ok(Value::Number(a / b))
@@ -87,7 +100,8 @@ impl Value {
                     Err(Error::InvalidType {
                         left: self.clone(),
                         right: other.cloned(),
-                        operator,
+                        token,
+                        message: String::from("Operation must be done with numbers."),
                     })
                 }
             }
@@ -96,7 +110,8 @@ impl Value {
                 _ => Err(Error::InvalidType {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with numbers."),
                 }),
             },
 
@@ -108,7 +123,8 @@ impl Value {
                     Err(Error::InvalidOperation {
                         left: self.clone(),
                         right: other.cloned(),
-                        operator,
+                        token,
+                        message: String::from("Operation must be done with one operand."),
                     })
                 }
             }
@@ -116,61 +132,68 @@ impl Value {
             // - Comparisons
             TokenType::EQUAL_EQUAL => match (self, other) {
                 (left, Some(right)) => Ok(Value::Boolean(left.is_equal(right))),
-                _ => Err(Error::InvalidType {
+                _ => Err(Error::InvalidOperation {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with two operands."),
                 }),
             },
             TokenType::BANG_EQUAL => match (self, other) {
                 (left, Some(right)) => Ok(Value::Boolean(!left.is_equal(right))),
-                _ => Err(Error::InvalidType {
+                _ => Err(Error::InvalidOperation {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with two operands."),
                 }),
             },
             TokenType::GREATER => match (self, other) {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a > b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a > b)),
-                _ => Err(Error::InvalidType {
+                _ => Err(Error::InvalidOperation {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with two operands."),
                 }),
             },
             TokenType::GREATER_EQUAL => match (self, other) {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a >= b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a >= b)),
-                _ => Err(Error::InvalidType {
+                _ => Err(Error::InvalidOperation {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with two operands."),
                 }),
             },
             TokenType::LESS => match (self, other) {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a < b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a < b)),
-                _ => Err(Error::InvalidType {
+                _ => Err(Error::InvalidOperation {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with two operands."),
                 }),
             },
             TokenType::LESS_EQUAL => match (self, other) {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a <= b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a <= b)),
-                _ => Err(Error::InvalidType {
+                _ => Err(Error::InvalidOperation {
                     left: self.clone(),
                     right: other.cloned(),
-                    operator,
+                    token,
+                    message: String::from("Operation must be done with two operands."),
                 }),
             },
 
             _ => Err(Error::InvalidOperation {
                 left: self.clone(),
                 right: other.cloned(),
-                operator,
+                token,
+                message: String::from("Invalid operation."),
             }),
         }
     }
@@ -198,6 +221,50 @@ mod tests {
 
     use super::*;
 
+    fn create_token(token_type: TokenType) -> Token {
+        Token::new(token_type.clone(), token_type.to_string(), None, 1)
+    }
+
+    #[test]
+    /// Tests what prints to console by display
+    fn test_value_display_ok() -> Result<()> {
+        let str = Value::String("hello".to_string());
+        let num = Value::Number(6.0);
+        let num_with_dec = Value::Number(6.02);
+        let bool_true = Value::Boolean(true);
+        let bool_false = Value::Boolean(false);
+        let nil = Value::Nil;
+
+        assert_eq!("hello", format!("{}", str));
+        assert_eq!("6.0", format!("{}", num));
+        assert_eq!("6.02", format!("{}", num_with_dec));
+        assert_eq!("true", format!("{}", bool_true));
+        assert_eq!("false", format!("{}", bool_false));
+        assert_eq!("nil", format!("{}", nil));
+
+        Ok(())
+    }
+
+    #[test]
+    /// Tests what returns from stringify for user display
+    fn test_value_stringify_ok() -> Result<()> {
+        let str = Value::String("hello".to_string());
+        let num = Value::Number(6.0);
+        let num_with_dec = Value::Number(6.02);
+        let bool_true = Value::Boolean(true);
+        let bool_false = Value::Boolean(false);
+        let nil = Value::Nil;
+
+        assert_eq!("hello", str.stringify());
+        assert_eq!("6", num.stringify());
+        assert_eq!("6.02", num_with_dec.stringify());
+        assert_eq!("true", bool_true.stringify());
+        assert_eq!("false", bool_false.stringify());
+        assert_eq!("nil", nil.stringify());
+
+        Ok(())
+    }
+
     #[test]
     fn test_value_truthy_ok() -> Result<()> {
         assert!(!Value::Nil.is_truthy());
@@ -212,8 +279,8 @@ mod tests {
     #[test]
     fn test_value_operation_negation_ok() -> Result<()> {
         let negate = |left: Value, right: Option<&Value>| {
-            let operator = TokenType::MINUS;
-            left.calculate(right, operator)
+            let token = create_token(TokenType::MINUS);
+            left.calculate(right, token)
         };
 
         let b_true = Value::Boolean(true);
@@ -240,52 +307,70 @@ mod tests {
         let nil = &Value::Nil;
 
         // error if bool
-        assert!(b_true.calculate(Some(b_true), TokenType::PLUS).is_err());
-        assert!(b_true.calculate(Some(b_true), TokenType::MINUS).is_err());
-        assert!(b_true.calculate(Some(b_true), TokenType::STAR).is_err());
-        assert!(b_true.calculate(Some(b_true), TokenType::SLASH).is_err());
+        assert!(b_true
+            .calculate(Some(b_true), create_token(TokenType::PLUS))
+            .is_err());
+        assert!(b_true
+            .calculate(Some(b_true), create_token(TokenType::MINUS))
+            .is_err());
+        assert!(b_true
+            .calculate(Some(b_true), create_token(TokenType::STAR))
+            .is_err());
+        assert!(b_true
+            .calculate(Some(b_true), create_token(TokenType::SLASH))
+            .is_err());
 
         // error if nil
-        assert!(nil.calculate(Some(nil), TokenType::PLUS).is_err());
-        assert!(nil.calculate(Some(nil), TokenType::MINUS).is_err());
-        assert!(nil.calculate(Some(nil), TokenType::STAR).is_err());
-        assert!(nil.calculate(Some(nil), TokenType::SLASH).is_err());
+        assert!(nil
+            .calculate(Some(nil), create_token(TokenType::PLUS))
+            .is_err());
+        assert!(nil
+            .calculate(Some(nil), create_token(TokenType::MINUS))
+            .is_err());
+        assert!(nil
+            .calculate(Some(nil), create_token(TokenType::STAR))
+            .is_err());
+        assert!(nil
+            .calculate(Some(nil), create_token(TokenType::SLASH))
+            .is_err());
 
         // region:    --- STRING
 
         assert_eq!(
-            a_string.calculate(Some(a_string), TokenType::PLUS)?,
+            a_string.calculate(Some(a_string), create_token(TokenType::PLUS))?,
             Value::String(format!("{}{}", a_string, a_string))
         );
         assert!(a_string
-            .calculate(Some(a_string), TokenType::MINUS)
+            .calculate(Some(a_string), create_token(TokenType::MINUS))
             .is_err());
-        assert!(a_string.calculate(Some(a_string), TokenType::STAR).is_err());
         assert!(a_string
-            .calculate(Some(a_string), TokenType::SLASH)
+            .calculate(Some(a_string), create_token(TokenType::STAR))
+            .is_err());
+        assert!(a_string
+            .calculate(Some(a_string), create_token(TokenType::SLASH))
             .is_err());
         // endregion: --- STRING
 
         // region:    --- NUMBER
 
         assert_eq!(
-            a_nubmer.calculate(Some(a_nubmer), TokenType::PLUS)?,
+            a_nubmer.calculate(Some(a_nubmer), create_token(TokenType::PLUS))?,
             Value::Number(12.0)
         );
         assert_eq!(
-            a_nubmer.calculate(Some(a_nubmer), TokenType::MINUS)?,
+            a_nubmer.calculate(Some(a_nubmer), create_token(TokenType::MINUS))?,
             Value::Number(0.0)
         );
         assert_eq!(
-            a_nubmer.calculate(Some(a_nubmer), TokenType::STAR)?,
+            a_nubmer.calculate(Some(a_nubmer), create_token(TokenType::STAR))?,
             Value::Number(36.0)
         );
         assert_eq!(
-            a_nubmer.calculate(Some(a_nubmer), TokenType::SLASH)?,
+            a_nubmer.calculate(Some(a_nubmer), create_token(TokenType::SLASH))?,
             Value::Number(1.0)
         );
         assert!(a_nubmer
-            .calculate(Some(&Value::Number(0.0)), TokenType::SLASH)
+            .calculate(Some(&Value::Number(0.0)), create_token(TokenType::SLASH))
             .is_err());
         // endregion: --- NUMBER
 
@@ -303,23 +388,23 @@ mod tests {
         // region:    --- EQUAL
 
         assert_eq!(
-            b_true.calculate(Some(&b_true), TokenType::EQUAL_EQUAL)?,
+            b_true.calculate(Some(&b_true), create_token(TokenType::EQUAL_EQUAL))?,
             Value::Boolean(true)
         );
         assert_eq!(
-            b_true.calculate(Some(&b_false), TokenType::EQUAL_EQUAL)?,
+            b_true.calculate(Some(&b_false), create_token(TokenType::EQUAL_EQUAL))?,
             Value::Boolean(false)
         );
         assert_eq!(
-            b_true.calculate(Some(&a_nubmer), TokenType::EQUAL_EQUAL)?,
+            b_true.calculate(Some(&a_nubmer), create_token(TokenType::EQUAL_EQUAL))?,
             Value::Boolean(false)
         );
         assert_eq!(
-            b_true.calculate(Some(&a_string), TokenType::EQUAL_EQUAL)?,
+            b_true.calculate(Some(&a_string), create_token(TokenType::EQUAL_EQUAL))?,
             Value::Boolean(false)
         );
         assert_eq!(
-            b_true.calculate(Some(&nil), TokenType::EQUAL_EQUAL)?,
+            b_true.calculate(Some(&nil), create_token(TokenType::EQUAL_EQUAL))?,
             Value::Boolean(false)
         );
 
@@ -328,52 +413,63 @@ mod tests {
         // region:    --- BANG EQUAL
 
         assert_eq!(
-            b_true.calculate(Some(&b_true), TokenType::BANG_EQUAL)?,
+            b_true.calculate(Some(&b_true), create_token(TokenType::BANG_EQUAL))?,
             Value::Boolean(false)
         );
         assert_eq!(
-            b_true.calculate(Some(&b_false), TokenType::BANG_EQUAL)?,
+            b_true.calculate(Some(&b_false), create_token(TokenType::BANG_EQUAL))?,
             Value::Boolean(true)
         );
         assert_eq!(
-            b_true.calculate(Some(&a_nubmer), TokenType::BANG_EQUAL)?,
+            b_true.calculate(Some(&a_nubmer), create_token(TokenType::BANG_EQUAL))?,
             Value::Boolean(true)
         );
         assert_eq!(
-            b_true.calculate(Some(&a_string), TokenType::BANG_EQUAL)?,
+            b_true.calculate(Some(&a_string), create_token(TokenType::BANG_EQUAL))?,
             Value::Boolean(true)
         );
         assert_eq!(
-            b_true.calculate(Some(&nil), TokenType::BANG_EQUAL)?,
+            b_true.calculate(Some(&nil), create_token(TokenType::BANG_EQUAL))?,
             Value::Boolean(true)
         );
         // endregion: --- BANG EQUAL
 
         // region:    --- GREATER
 
-        assert!(b_true.calculate(Some(&b_true), TokenType::GREATER).is_err());
-        assert!(nil.calculate(Some(&nil), TokenType::GREATER).is_err());
+        assert!(b_true
+            .calculate(Some(&b_true), create_token(TokenType::GREATER))
+            .is_err());
+        assert!(nil
+            .calculate(Some(&nil), create_token(TokenType::GREATER))
+            .is_err());
         assert_eq!(
             a_string.calculate(
                 Some(&Value::String("world".to_string())),
-                TokenType::GREATER
+                create_token(TokenType::GREATER)
             )?,
             Value::Boolean(false)
         );
         assert_eq!(
-            a_nubmer.calculate(Some(&Value::Number(6.0)), TokenType::GREATER)?,
+            a_nubmer.calculate(Some(&Value::Number(6.0)), create_token(TokenType::GREATER))?,
             Value::Boolean(false)
         );
 
         // less
-        assert!(b_true.calculate(Some(&b_true), TokenType::LESS).is_err());
-        assert!(nil.calculate(Some(&nil), TokenType::LESS).is_err());
+        assert!(b_true
+            .calculate(Some(&b_true), create_token(TokenType::LESS))
+            .is_err());
+        assert!(nil
+            .calculate(Some(&nil), create_token(TokenType::LESS))
+            .is_err());
         assert_eq!(
-            a_string.calculate(Some(&Value::String("world".to_string())), TokenType::LESS)?,
+            a_string.calculate(
+                Some(&Value::String("world".to_string())),
+                create_token(TokenType::LESS)
+            )?,
             Value::Boolean(true)
         );
         assert_eq!(
-            a_nubmer.calculate(Some(&Value::Number(6.0)), TokenType::LESS)?,
+            a_nubmer.calculate(Some(&Value::Number(6.0)), create_token(TokenType::LESS))?,
             Value::Boolean(false)
         );
         // endregion: --- GREATER
@@ -381,18 +477,23 @@ mod tests {
         // region:    --- GREATER EQUAL
 
         assert!(b_true
-            .calculate(Some(&b_true), TokenType::GREATER_EQUAL)
+            .calculate(Some(&b_true), create_token(TokenType::GREATER_EQUAL))
             .is_err());
-        assert!(nil.calculate(Some(&nil), TokenType::GREATER_EQUAL).is_err());
+        assert!(nil
+            .calculate(Some(&nil), create_token(TokenType::GREATER_EQUAL))
+            .is_err());
         assert_eq!(
             a_string.calculate(
                 Some(&Value::String("world".to_string())),
-                TokenType::GREATER_EQUAL
+                create_token(TokenType::GREATER_EQUAL)
             )?,
             Value::Boolean(false)
         );
         assert_eq!(
-            a_nubmer.calculate(Some(&Value::Number(6.0)), TokenType::GREATER_EQUAL)?,
+            a_nubmer.calculate(
+                Some(&Value::Number(6.0)),
+                create_token(TokenType::GREATER_EQUAL)
+            )?,
             Value::Boolean(true)
         );
         // endregion: --- GREATER EQUAL
@@ -400,18 +501,23 @@ mod tests {
         // region:    --- LESS EQUAL
 
         assert!(b_true
-            .calculate(Some(&b_true), TokenType::GREATER_EQUAL)
+            .calculate(Some(&b_true), create_token(TokenType::GREATER_EQUAL))
             .is_err());
-        assert!(nil.calculate(Some(&nil), TokenType::GREATER_EQUAL).is_err());
+        assert!(nil
+            .calculate(Some(&nil), create_token(TokenType::GREATER_EQUAL))
+            .is_err());
         assert_eq!(
             a_string.calculate(
                 Some(&Value::String("world".to_string())),
-                TokenType::GREATER_EQUAL
+                create_token(TokenType::GREATER_EQUAL)
             )?,
             Value::Boolean(false)
         );
         assert_eq!(
-            a_nubmer.calculate(Some(&Value::Number(6.0)), TokenType::GREATER_EQUAL)?,
+            a_nubmer.calculate(
+                Some(&Value::Number(6.0)),
+                create_token(TokenType::GREATER_EQUAL)
+            )?,
             Value::Boolean(true)
         );
 
@@ -423,8 +529,8 @@ mod tests {
     #[test]
     fn test_value_operation_bang_ok() -> Result<()> {
         let bang = |left: Value, right: Option<&Value>| {
-            let operator = TokenType::BANG;
-            left.calculate(right, operator)
+            let token: Token = Token::new(TokenType::BANG, "!", None, 1);
+            left.calculate(right, token)
         };
 
         let b_true = Value::Boolean(true);

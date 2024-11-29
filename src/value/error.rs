@@ -1,4 +1,4 @@
-use crate::TokenType;
+use crate::{Token, TokenType};
 
 use super::Value;
 
@@ -9,16 +9,32 @@ pub enum Error {
     InvalidOperation {
         left: Value,
         right: Option<Value>,
-        operator: TokenType,
+        token: Token,
+        message: String,
     },
     InvalidType {
         left: Value,
         right: Option<Value>,
-        operator: TokenType,
+        token: Token,
+        message: String,
     },
     ZeroDivision {
         left: Value,
         right: Option<Value>,
+        token: Token,
+        message: String,
+    },
+    MustBeNumber {
+        left: Value,
+        token: Token,
+        right: Option<Value>,
+        message: String,
+    },
+    MustBeNumberOrString {
+        left: Value,
+        token: Token,
+        right: Option<Value>,
+        message: String,
     },
 }
 
