@@ -14,14 +14,8 @@ pub struct Environment {
 impl Environment {
     pub fn get(&self, name: Token) -> Result<Value> {
         match self.values.get(&name.lexeme) {
-            Some(value) => {
-                if let Some(value) = value {
-                    Ok(value.clone())
-                } else {
-                    Ok(Value::Nil)
-                }
-            }
-            None => Err(Error::UndefinedVariable(name)),
+            Some(Some(value)) => Ok(value.clone()),
+            _ => Err(Error::UndefinedVariable(name)),
         }
     }
 

@@ -76,20 +76,10 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
 
                 Ok(value.calculate(None, operator.clone())?)
             }
-            Expr::Variable(name) => {
-                let value = visitor
-                    .lock()
-                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
-                    .get(name.clone());
-
-                match value {
-                    Ok(value) => Ok(value),
-                    Err(e) => {
-                        debug!("Variable {} not found: {}", name.lexeme, e);
-                        Ok(Value::Nil)
-                    }
-                }
-            }
+            Expr::Variable(name) => visitor
+                .lock()
+                .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
+                .get(name.clone()),
         }
     }
 }
@@ -113,7 +103,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
             Expr::Unary { operator, right } => {
                 Self::parenthesize(&visitor, operator.lexeme.clone(), &[right])
             }
-            Expr::Variable(name) => name.lexeme.clone(),
+            Expr::Variable(name) => format!("var {}", name.lexeme),
         }
     }
 }
