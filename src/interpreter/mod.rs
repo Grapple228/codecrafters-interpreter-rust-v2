@@ -58,11 +58,13 @@ impl Interpreter {
     }
 
     pub fn get(&self, name: Token) -> Result<Value> {
-        self.environment
+        let value = self
+            .environment
             .lock()
             .map_err(|e| Error::MutexError(e.to_string()))?
-            .get(name)
-            .map_err(Error::from)
+            .get(name);
+
+        Ok(value?)
     }
 
     fn execute(&self, stmt: impl Into<Stmt>) -> Result<()> {

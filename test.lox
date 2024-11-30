@@ -1,1 +1,6 @@
-print a;
+var quz = 73 + 26 * 20;
+print quz;
+var hello = 26 * 20;
+print quz + hello;
+var foo;
+print foo;
