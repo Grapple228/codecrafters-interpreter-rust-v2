@@ -3,7 +3,8 @@ use crate::{value, visitor::Acceptor, Expr, Stmt, TokenType, Value, Visitor};
 mod error;
 
 pub use error::{Error, Result};
-use tracing::info;
+use tracing::{debug, info};
+use tracing_subscriber::field::debug;
 
 #[derive(Debug, Default, Clone)]
 pub struct Interpreter {
@@ -55,8 +56,8 @@ impl Interpreter {
                     // Stop execution on first error
 
                     self.had_runtime_error = true;
-                    Self::error(e);
-                    break;
+                    Self::error(e.clone());
+                    return Err(e);
                 }
             }
         }

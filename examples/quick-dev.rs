@@ -13,9 +13,14 @@ fn main() -> Result<()> {
 
     scanner.scan_tokens()?;
 
-    for token in scanner.tokens() {
-        println!("{}", token);
-    }
+    debug!(
+        "Scanned tokens: {:#?}",
+        scanner
+            .tokens()
+            .iter()
+            .map(|t| t.to_string())
+            .collect::<Vec<_>>()
+    );
 
     if scanner.had_error() {
         process::exit(65)
@@ -31,11 +36,13 @@ fn main() -> Result<()> {
     let stmts = stmts?;
 
     let printer = AstPrinter::default();
-    for stmt in &stmts {
-        let result = printer.print(stmt.clone());
-
-        println!("{}", result);
-    }
+    debug!(
+        "Parsed expressions: {:#?}",
+        stmts
+            .iter()
+            .map(|s| printer.print(s.clone()))
+            .collect::<Vec<_>>()
+    );
 
     let mut interpreter = Interpreter::default();
     let result = interpreter.interpret_stmt(&stmts);

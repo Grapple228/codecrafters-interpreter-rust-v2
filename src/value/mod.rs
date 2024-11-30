@@ -77,7 +77,7 @@ impl Value {
                 (Value::String(a), Some(Value::String(b))) => {
                     Ok(Value::String(format!("{}{}", a, b)))
                 }
-                (Value::String(a), None) => Ok(Value::String(a.clone())),
+                // (Value::String(a), None) => Ok(Value::String(a.clone())),
                 _ => Err(Error::InvalidType {
                     left: self.clone(),
                     right: other.cloned(),
@@ -370,6 +370,9 @@ mod tests {
             a_nubmer.calculate(Some(a_nubmer), create_token(TokenType::SLASH))?,
             Value::Number(1.0)
         );
+        assert!(a_nubmer
+            .calculate(Some(a_string), create_token(TokenType::PLUS))
+            .is_err());
         assert!(a_nubmer
             .calculate(Some(&Value::Number(0.0)), create_token(TokenType::SLASH))
             .is_err());

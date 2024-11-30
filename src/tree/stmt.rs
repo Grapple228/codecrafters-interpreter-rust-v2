@@ -13,7 +13,7 @@ impl Acceptor<Result<()>, &Interpreter> for Stmt {
     fn accept(&self, visitor: &Interpreter) -> Result<()> {
         match self {
             Stmt::Expression(expr) => {
-                let _ = expr.accept(visitor);
+                let _ = expr.accept(visitor)?;
                 Ok(())
             }
             Stmt::Print(expr) => {
