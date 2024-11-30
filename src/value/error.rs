@@ -4,7 +4,7 @@ use super::Value;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Error {
     InvalidOperation {
         left: Value,

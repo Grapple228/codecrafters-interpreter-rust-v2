@@ -9,6 +9,7 @@ use tracing_subscriber::{fmt::format, EnvFilter};
 
 // -- Modules
 mod config;
+mod environment;
 mod error;
 mod extensions;
 mod interpreter;
@@ -33,6 +34,8 @@ pub use value::Value;
 pub use visitor::Visitor;
 
 // endregion: --- Modules
+
+pub struct W<T>(T);
 
 pub fn report(line: usize, message: impl Into<String>) {
     eprintln!("[line {}] Error: {}", line, message.into());

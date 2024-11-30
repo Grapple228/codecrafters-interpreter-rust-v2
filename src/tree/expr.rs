@@ -1,6 +1,8 @@
+use std::sync::{Arc, Mutex};
+
 use tracing::debug;
 
-use crate::interpreter::Result;
+use crate::interpreter::{self, Result};
 use crate::{
     visitor::{self, Acceptor},
     AstPrinter, Interpreter, Token, Value, Visitor,
@@ -21,6 +23,7 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
+    Variable(Token),
 }
 
 impl Into<Stmt> for Expr {
@@ -47,8 +50,8 @@ impl Expr {
     }
 }
 
-impl Acceptor<Result<Value>, &Interpreter> for Expr {
-    fn accept(&self, visitor: &Interpreter) -> Result<Value> {
+impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
+    fn accept(&self, visitor: &Arc<Mutex<Interpreter>>) -> Result<Value> {
         match self {
             Expr::Binary {
                 left,
@@ -73,6 +76,20 @@ impl Acceptor<Result<Value>, &Interpreter> for Expr {
 
                 Ok(value.calculate(None, operator.clone())?)
             }
+            Expr::Variable(name) => {
+                let value = visitor
+                    .lock()
+                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
+                    .get(name.clone());
+
+                match value {
+                    Ok(value) => Ok(value),
+                    Err(e) => {
+                        debug!("Variable {} not found: {}", name.lexeme, e);
+                        Ok(Value::Nil)
+                    }
+                }
+            }
         }
     }
 }
@@ -96,6 +113,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
             Expr::Unary { operator, right } => {
                 Self::parenthesize(&visitor, operator.lexeme.clone(), &[right])
             }
+            Expr::Variable(name) => name.lexeme.clone(),
         }
     }
 }

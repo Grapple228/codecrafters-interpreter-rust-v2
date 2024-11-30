@@ -1,21 +1,10 @@
-use std::sync::MutexGuard;
-
-use derive_more::derive::From;
-
-use crate::{environment, value, TokenType, Value};
+use crate::Token;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, From)]
+#[derive(Debug, Clone)]
 pub enum Error {
-    #[from]
-    ValueError(value::Error),
-    #[from]
-    EnvironmentError(environment::Error),
-
-    // -- Externals
-    #[from]
-    MutexError(String),
+    UndefinedVariable(Token),
 }
 
 // region:    --- Error Boilerplate

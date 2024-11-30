@@ -27,13 +27,13 @@ impl Parser {
         let mut stmts = Vec::new();
 
         while !self.is_end() {
-            let stmt = self.statement();
+            let stmt = self.declaration();
 
             match stmt {
                 Ok(stmt) => stmts.push(stmt),
                 Err(e) => {
                     self.had_error = true;
-                    Self::error(e.clone());
+                    Self::error(&e);
                     return Err(e);
                 }
             }
@@ -43,6 +43,39 @@ impl Parser {
     }
 
     // region:    --- Statements
+
+    fn declaration(&mut self) -> Result<Stmt> {
+        let stmt = if self.matches(&[TokenType::VAR]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        };
+
+        match stmt {
+            Ok(stmt) => Ok(stmt),
+            Err(e) => {
+                self.synchronize();
+                Err(e)
+            }
+        }
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt> {
+        let name = self.consume(TokenType::IDENTIFIER, "Expect variable name.")?;
+
+        let mut initializer = None;
+
+        if self.matches(&[TokenType::EQUAL]) {
+            initializer = Some(Box::new(self.expression()?));
+        }
+
+        self.consume(
+            TokenType::SEMICOLON,
+            "Expect ';' after variable declaration.",
+        )?;
+
+        Ok(Stmt::Var { name, initializer })
+    }
 
     fn statement(&mut self) -> Result<Stmt> {
         if self.matches(&[TokenType::PRINT]) {
@@ -78,7 +111,7 @@ impl Parser {
             Ok(expr) => Ok(expr),
             Err(e) => {
                 self.had_error = true;
-                Self::error(e.clone());
+                Self::error(&e);
                 Err(e)
             }
         }
@@ -191,6 +224,10 @@ impl Parser {
             return Ok(Expr::Literal(self.previous().literal));
         }
 
+        if self.matches(&[TokenType::IDENTIFIER]) {
+            return Ok(Expr::Variable(self.previous().clone()));
+        }
+
         if self.matches(&[TokenType::LEFT_PAREN]) {
             let expr = self.expression();
             self.consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.")?;
@@ -287,7 +324,7 @@ impl Parser {
         self.had_error
     }
 
-    fn error(error: Error) {
+    fn error(error: &Error) {
         match error {
             Error::UnknownExpression(token) => {
                 crate::report(token.line, "Unknown expression.");

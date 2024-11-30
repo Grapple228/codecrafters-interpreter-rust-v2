@@ -1,4 +1,14 @@
-use crate::{value, visitor::Acceptor, Expr, Stmt, TokenType, Value, Visitor};
+use std::{
+    borrow::BorrowMut,
+    sync::{Arc, Mutex},
+};
+
+use crate::{
+    environment::{self, Environment},
+    value,
+    visitor::Acceptor,
+    Expr, Stmt, Token, TokenType, Value, Visitor, W,
+};
 
 mod error;
 
@@ -9,36 +19,67 @@ use tracing_subscriber::field::debug;
 #[derive(Debug, Default, Clone)]
 pub struct Interpreter {
     had_runtime_error: bool,
+    environment: Arc<Mutex<Environment>>,
 }
 
-impl Visitor<Result<Value>> for &Interpreter {
+impl Visitor<Result<Value>> for &Arc<Mutex<Interpreter>> {
     fn visit(&self, acceptor: impl Acceptor<Result<Value>, Self>) -> Result<Value> {
         acceptor.accept(&self)
     }
 }
 
-impl Visitor<Result<()>> for &Interpreter {
-    fn visit(&self, acceptor: impl Acceptor<Result<()>, Self>) -> Result<()> {
-        acceptor.accept(&self)
+impl Visitor<Result<()>> for &Arc<Mutex<Interpreter>> {
+    fn visit(&self, acceptor: impl Acceptor<Result<()>, Self>) -> Result<()>
+    where
+        Self: Sized,
+    {
+        acceptor.accept(self)
     }
 }
 
+// region:    --- Froms
+
+impl From<W<Interpreter>> for Arc<Mutex<Interpreter>> {
+    fn from(value: W<Interpreter>) -> Self {
+        Arc::new(Mutex::new(value.0))
+    }
+}
+
+// endregion: --- Froms
+
 impl Interpreter {
-    fn execute(&mut self, stmt: impl Into<Stmt>) -> Result<()> {
+    pub fn define(&mut self, name: String, value: Option<Value>) -> Result<()> {
+        self.environment
+            .lock()
+            .map_err(|e| Error::MutexError(e.to_string()))?
+            .define(name, value);
+
+        Ok(())
+    }
+
+    pub fn get(&self, name: Token) -> Result<Value> {
+        self.environment
+            .lock()
+            .map_err(|e| Error::MutexError(e.to_string()))?
+            .get(name)
+            .map_err(Error::from)
+    }
+
+    fn execute(&self, stmt: impl Into<Stmt>) -> Result<()> {
         let stmt = stmt.into();
 
-        stmt.accept(&self.clone())
+        stmt.accept(&W(self.clone()).into())
     }
 
     pub fn interpret_expr(&mut self, expr: Expr) -> Result<Value> {
         info!("Interpreting expression...");
-        let value = expr.accept(&self.clone());
+        let value = expr.accept(&W(self.clone()).into());
 
         match value {
             Ok(value) => Ok(value),
             Err(e) => {
                 self.had_runtime_error = true;
-                Self::error(e.clone());
+                Self::error(&e);
                 Err(e)
             }
         }
@@ -48,7 +89,7 @@ impl Interpreter {
         info!("Interpreting statement...");
 
         for stmt in stmts {
-            let evaluated = stmt.accept(&self.clone());
+            let evaluated = stmt.accept(&W(self.clone()).into());
 
             match evaluated {
                 Ok(_) => {}
@@ -56,7 +97,7 @@ impl Interpreter {
                     // Stop execution on first error
 
                     self.had_runtime_error = true;
-                    Self::error(e.clone());
+                    Self::error(&e);
                     return Err(e);
                 }
             }
@@ -69,7 +110,7 @@ impl Interpreter {
         self.had_runtime_error
     }
 
-    fn error(error: Error) {
+    fn error(error: &Error) {
         match error {
             Error::ValueError(error) => match error {
                 value::Error::InvalidOperation {
@@ -103,6 +144,14 @@ impl Interpreter {
                     message,
                 } => crate::report(token.line, message),
             },
+            Error::EnvironmentError(error) => match error {
+                environment::Error::UndefinedVariable(name) => {
+                    crate::report(name.line, format!("Undefined variable '{}'.", name.lexeme))
+                }
+            },
+            Error::MutexError(error) => {
+                crate::report(0, format!("Mutex error: {}", error));
+            }
         }
     }
 }
