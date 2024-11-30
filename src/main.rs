@@ -102,7 +102,7 @@ fn evaluate(filename: &str) -> Result<()> {
     }
 
     let mut interpreter = Interpreter::default();
-    let result = interpreter.interpret(expr?);
+    let result = interpreter.interpret_expr(expr?);
 
     if interpreter.had_runtime_error() {
         process::exit(70)
@@ -119,5 +119,27 @@ fn evaluate(filename: &str) -> Result<()> {
 }
 
 fn run(filename: &str) -> Result<()> {
-    todo!()
+    let mut scanner = Scanner::new(filename)?;
+
+    scanner.scan_tokens()?;
+
+    if scanner.had_error() {
+        process::exit(65)
+    }
+
+    let mut parser = Parser::new(&scanner.tokens());
+    let stmts = parser.parse_stmt();
+
+    if parser.had_error() {
+        process::exit(65)
+    }
+
+    let mut interpreter = Interpreter::default();
+    let result = interpreter.interpret_stmt(&stmts?);
+
+    if interpreter.had_runtime_error() {
+        process::exit(70)
+    }
+
+    Ok(())
 }

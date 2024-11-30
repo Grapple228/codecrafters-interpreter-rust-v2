@@ -22,26 +22,26 @@ fn main() -> Result<()> {
     }
 
     let mut parser = Parser::new(&scanner.tokens());
-    let expr = parser.parse_expr();
+    let stmts = parser.parse_stmt();
 
-    match expr.clone() {
-        Ok(expr) => {
-            let printer = AstPrinter::default();
-            let result = printer.print(expr);
+    if parser.had_error() {
+        process::exit(65)
+    }
 
-            println!("{}", result);
-        }
-        Err(e) => process::exit(65),
+    let stmts = stmts?;
+
+    let printer = AstPrinter::default();
+    for stmt in &stmts {
+        let result = printer.print(stmt.clone());
+
+        println!("{}", result);
     }
 
     let mut interpreter = Interpreter::default();
-    let result = interpreter.interpret(expr?);
+    let result = interpreter.interpret_stmt(&stmts);
 
-    match result {
-        Ok(value) => {
-            println!("{}", value.stringify());
-        }
-        Err(e) => process::exit(70),
+    if interpreter.had_runtime_error() {
+        process::exit(70)
     }
 
     Ok(())

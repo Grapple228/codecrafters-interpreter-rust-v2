@@ -21,6 +21,49 @@ impl Parser {
         }
     }
 
+    pub fn parse_stmt(&mut self) -> Result<Vec<Stmt>> {
+        info!("Parsing tokens into Stmt...");
+
+        let mut stmts = Vec::new();
+
+        let mut i = 0;
+        while !self.is_end() {
+            debug!("{}", i);
+            i += 1;
+            stmts.push(self.statement()?);
+        }
+
+        Ok(stmts)
+    }
+
+    // region:    --- Statements
+
+    fn statement(&mut self) -> Result<Stmt> {
+        if self.matches(&[TokenType::PRINT]) {
+            return self.print_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt> {
+        let value = self.expression();
+        self.consume(TokenType::SEMICOLON, "Expect ';' after value.")?;
+        Ok(Stmt::Print(Box::new(value?)))
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt> {
+        let expr = self.expression();
+
+        self.consume(TokenType::SEMICOLON, "Expect ';' after expression.")?;
+
+        Ok(Stmt::Expression(Box::new(expr?)))
+    }
+
+    // endregion: --- Statements
+
+    // region:    --- Expressions
+
     pub fn parse_expr(&mut self) -> Result<Expr> {
         info!("Parsing tokens into Expr...");
         let result = self.expression();
@@ -34,51 +77,6 @@ impl Parser {
             }
         }
     }
-
-    pub fn parse_stmt(&mut self) -> Result<Vec<Stmt>> {
-        // info!("Parsing tokens into Stmt...");
-
-        // let mut stmts = Vec::new();
-
-        // while !self.is_end() {
-        //     stmts.push(self.declaration()?);
-        // }
-
-        // let result = self.expression();
-
-        // match result {
-        //     Ok(expr) => Ok(expr),
-        //     Err(e) => {
-        //         self.had_error = true;
-        //         Self::error(e.clone());
-        //         Err(e)
-        //     }
-        // }
-
-        todo!()
-    }
-
-    fn statement(&mut self) -> Result<Stmt> {
-        if self.matches(&[TokenType::PRINT]) {
-            return self.print_statement();
-        }
-
-        self.expression_statement()
-    }
-
-    fn print_statement(&mut self) -> Result<Stmt> {
-        let expr = self.expression();
-        self.consume(TokenType::SEMICOLON, "Expect ';' after expression.")?;
-        Ok(Stmt::Print(Box::new(expr?)))
-    }
-
-    fn expression_statement(&mut self) -> Result<Stmt> {
-        let expr = self.expression();
-        self.consume(TokenType::SEMICOLON, "Expect ';' after expression.")?;
-        Ok(Stmt::Expression(Box::new(expr?)))
-    }
-
-    // region:    --- Expressions
 
     fn expression(&mut self) -> Result<Expr> {
         self.equality()
@@ -237,7 +235,7 @@ impl Parser {
     }
 
     fn is_end(&self) -> bool {
-        self.current >= self.tokens.len()
+        self.peek().token_type == TokenType::EOF
     }
 
     fn peek(&self) -> Token {

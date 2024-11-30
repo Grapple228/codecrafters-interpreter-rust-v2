@@ -6,6 +6,8 @@ use crate::{
     AstPrinter, Interpreter, Token, Value, Visitor,
 };
 
+use super::Stmt;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Binary {
@@ -19,6 +21,12 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
+}
+
+impl Into<Stmt> for Expr {
+    fn into(self) -> Stmt {
+        Stmt::Expression(Box::new(self))
+    }
 }
 
 impl Expr {

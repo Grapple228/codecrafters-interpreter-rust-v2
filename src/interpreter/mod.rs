@@ -1,4 +1,4 @@
-use crate::{value, visitor::Acceptor, Expr, TokenType, Value, Visitor};
+use crate::{value, visitor::Acceptor, Expr, Stmt, TokenType, Value, Visitor};
 
 mod error;
 
@@ -16,13 +16,21 @@ impl Visitor<Result<Value>> for &Interpreter {
     }
 }
 
+impl Visitor<Result<()>> for &Interpreter {
+    fn visit(&self, acceptor: impl Acceptor<Result<()>, Self>) -> Result<()> {
+        acceptor.accept(&self)
+    }
+}
+
 impl Interpreter {
-    pub fn had_runtime_error(&self) -> bool {
-        self.had_runtime_error
+    fn execute(&mut self, stmt: impl Into<Stmt>) -> Result<()> {
+        let stmt = stmt.into();
+
+        stmt.accept(&self.clone())
     }
 
-    pub fn interpret(&mut self, expr: Expr) -> Result<Value> {
-        info!("Interpreting tokens...");
+    pub fn interpret_expr(&mut self, expr: Expr) -> Result<Value> {
+        info!("Interpreting expression...");
         let value = expr.accept(&self.clone());
 
         match value {
@@ -33,6 +41,31 @@ impl Interpreter {
                 Err(e)
             }
         }
+    }
+
+    pub fn interpret_stmt(&mut self, stmts: &[Stmt]) -> Result<()> {
+        info!("Interpreting statement...");
+
+        for stmt in stmts {
+            let evaluated = stmt.accept(&self.clone());
+
+            match evaluated {
+                Ok(_) => {}
+                Err(e) => {
+                    // Stop execution on first error
+
+                    self.had_runtime_error = true;
+                    Self::error(e);
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn had_runtime_error(&self) -> bool {
+        self.had_runtime_error
     }
 
     fn error(error: Error) {
@@ -93,7 +126,7 @@ mod tests {
         };
 
         let mut interpreter = interpreter::Interpreter::default();
-        let result = interpreter.interpret(expr)?;
+        let result = interpreter.interpret_expr(expr)?;
 
         assert_eq!(result, Value::Boolean(false));
 
@@ -109,7 +142,7 @@ mod tests {
         };
 
         let mut interpreter = interpreter::Interpreter::default();
-        let result = interpreter.interpret(expr)?;
+        let result = interpreter.interpret_expr(expr)?;
 
         assert_eq!(result, Value::Number(6.0));
 
@@ -125,7 +158,7 @@ mod tests {
         };
 
         let mut interpreter = interpreter::Interpreter::default();
-        let result = interpreter.interpret(expr)?;
+        let result = interpreter.interpret_expr(expr)?;
 
         assert_eq!(result, Value::String("helloworld".to_string()));
 
@@ -137,7 +170,7 @@ mod tests {
         let expr = Expr::Literal(None);
 
         let mut interpreter = interpreter::Interpreter::default();
-        let result = interpreter.interpret(expr)?;
+        let result = interpreter.interpret_expr(expr)?;
 
         assert_eq!(result, Value::Nil);
 
@@ -163,7 +196,7 @@ mod tests {
         };
 
         let mut interpreter = interpreter::Interpreter::default();
-        let result = interpreter.interpret(multiply)?;
+        let result = interpreter.interpret_expr(multiply)?;
 
         assert_eq!(result, Value::Number(49.0));
 

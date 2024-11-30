@@ -1,6 +1,7 @@
-use crate::{visitor::Acceptor, Visitor};
+use crate::{visitor::Acceptor, AstPrinter, Interpreter, Visitor};
 
 use super::Expr;
+use crate::interpreter::Result;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
@@ -8,8 +9,27 @@ pub enum Stmt {
     Expression(Box<Expr>),
 }
 
-// impl<T> Acceptor<T> for Stmt {
-//     fn accept(&self, visitor: &impl Visitor<T>) -> T {
-//         visitor.visit(self.clone())
-//     }
-// }
+impl Acceptor<Result<()>, &Interpreter> for Stmt {
+    fn accept(&self, visitor: &Interpreter) -> Result<()> {
+        match self {
+            Stmt::Expression(expr) => {
+                let _ = expr.accept(visitor);
+                Ok(())
+            }
+            Stmt::Print(expr) => {
+                let value = expr.accept(visitor)?;
+                println!("{}", value.stringify());
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Acceptor<String, &AstPrinter> for Stmt {
+    fn accept(&self, visitor: &AstPrinter) -> String {
+        match self {
+            Stmt::Expression(expr) => expr.accept(visitor),
+            Stmt::Print(expr) => expr.accept(visitor),
+        }
+    }
+}

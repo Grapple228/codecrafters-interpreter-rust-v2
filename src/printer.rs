@@ -8,8 +8,11 @@ use crate::{visitor::Acceptor, Expr, Value, Visitor};
 pub struct AstPrinter;
 
 impl AstPrinter {
-    pub fn print(&self, expr: Expr) -> String {
-        expr.accept(self)
+    pub fn print<A>(&self, acceptor: A) -> String
+    where
+        A: for<'a> Acceptor<String, &'a AstPrinter>,
+    {
+        acceptor.accept(&self)
     }
 }
 
