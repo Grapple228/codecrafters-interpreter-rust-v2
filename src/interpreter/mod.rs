@@ -1,42 +1,18 @@
-use crate::{value, Expr, TokenType, Value, Visitor};
+use crate::{value, visitor::Acceptor, Expr, TokenType, Value, Visitor};
 
 mod error;
 
 pub use error::{Error, Result};
 use tracing::info;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Interpreter {
     had_runtime_error: bool,
 }
 
-impl Visitor<Result<Value>> for Interpreter {
-    fn visit(&self, expr: &Expr) -> Result<Value> {
-        match expr {
-            Expr::Binary {
-                left,
-                operator,
-                right,
-            } => {
-                let left = self.evaluate(left)?;
-                let right = self.evaluate(right)?;
-
-                Ok(left.calculate(Some(&right), operator.clone())?)
-            }
-            Expr::Grouping(expr) => self.evaluate(expr),
-            Expr::Literal(value) => {
-                if let Some(value) = value.clone() {
-                    Ok(value)
-                } else {
-                    Ok(Value::Nil)
-                }
-            }
-            Expr::Unary { operator, right } => {
-                let value = self.evaluate(right)?;
-
-                Ok(value.calculate(None, operator.clone())?)
-            }
-        }
+impl Visitor<Result<Value>> for &Interpreter {
+    fn visit(&self, acceptor: impl Acceptor<Result<Value>, Self>) -> Result<Value> {
+        acceptor.accept(&self)
     }
 }
 
@@ -45,13 +21,9 @@ impl Interpreter {
         self.had_runtime_error
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Value> {
-        expr.accept(self)
-    }
-
     pub fn interpret(&mut self, expr: Expr) -> Result<Value> {
         info!("Interpreting tokens...");
-        let value = self.evaluate(&expr);
+        let value = expr.accept(&self.clone());
 
         match value {
             Ok(value) => Ok(value),

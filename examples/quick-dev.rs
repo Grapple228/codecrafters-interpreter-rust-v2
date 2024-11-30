@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     }
 
     let mut parser = Parser::new(&scanner.tokens());
-    let expr = parser.parse();
+    let expr = parser.parse_expr();
 
     match expr.clone() {
         Ok(expr) => {

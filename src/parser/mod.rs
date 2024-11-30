@@ -1,6 +1,6 @@
 use tracing::{debug, info};
 
-use crate::{tree::Expr, Token, TokenType, Value, Visitor};
+use crate::{tree::Expr, Stmt, Token, TokenType, Value, Visitor};
 
 mod error;
 
@@ -21,8 +21,8 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Expr> {
-        info!("Parsing tokens...");
+    pub fn parse_expr(&mut self) -> Result<Expr> {
+        info!("Parsing tokens into Expr...");
         let result = self.expression();
 
         match result {
@@ -35,23 +35,50 @@ impl Parser {
         }
     }
 
-    pub fn had_error(&self) -> bool {
-        self.had_error
+    pub fn parse_stmt(&mut self) -> Result<Vec<Stmt>> {
+        // info!("Parsing tokens into Stmt...");
+
+        // let mut stmts = Vec::new();
+
+        // while !self.is_end() {
+        //     stmts.push(self.declaration()?);
+        // }
+
+        // let result = self.expression();
+
+        // match result {
+        //     Ok(expr) => Ok(expr),
+        //     Err(e) => {
+        //         self.had_error = true;
+        //         Self::error(e.clone());
+        //         Err(e)
+        //     }
+        // }
+
+        todo!()
     }
 
-    fn error(error: Error) {
-        match error {
-            Error::UnknownExpression(token) => {
-                crate::report(token.line, "Unknown expression.");
-            }
-            Error::UnexpectedToken(token, message) => {
-                crate::report(token.line, message);
-            }
-            Error::ExpectExpression(token) => {
-                crate::report(token.line, "Expect expression {}.");
-            }
+    fn statement(&mut self) -> Result<Stmt> {
+        if self.matches(&[TokenType::PRINT]) {
+            return self.print_statement();
         }
+
+        self.expression_statement()
     }
+
+    fn print_statement(&mut self) -> Result<Stmt> {
+        let expr = self.expression();
+        self.consume(TokenType::SEMICOLON, "Expect ';' after expression.")?;
+        Ok(Stmt::Print(Box::new(expr?)))
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt> {
+        let expr = self.expression();
+        self.consume(TokenType::SEMICOLON, "Expect ';' after expression.")?;
+        Ok(Stmt::Expression(Box::new(expr?)))
+    }
+
+    // region:    --- Expressions
 
     fn expression(&mut self) -> Result<Expr> {
         self.equality()
@@ -169,6 +196,10 @@ impl Parser {
         Err(Error::ExpectExpression(self.peek()))?
     }
 
+    // endregion: --- Expressions
+
+    // region:    --- Helpers
+
     fn consume(&mut self, token_type: TokenType, message: impl Into<String>) -> Result<Token> {
         if self.check(token_type.clone()) {
             return Ok(self.advance());
@@ -243,6 +274,30 @@ impl Parser {
 
         self.peek().token_type == token_type
     }
+
+    // endregion: --- Helpers
+
+    // region:    --- Error
+
+    pub fn had_error(&self) -> bool {
+        self.had_error
+    }
+
+    fn error(error: Error) {
+        match error {
+            Error::UnknownExpression(token) => {
+                crate::report(token.line, "Unknown expression.");
+            }
+            Error::UnexpectedToken(token, message) => {
+                crate::report(token.line, message);
+            }
+            Error::ExpectExpression(token) => {
+                crate::report(token.line, "Expect expression {}.");
+            }
+        }
+    }
+
+    // endregion: --- Error
 }
 
 // region:    --- Tests
@@ -261,7 +316,7 @@ mod tests {
 
         // -- Exec
         let mut parser = Parser::new(&tokens);
-        let expr = parser.parse()?;
+        let expr = parser.parse_expr()?;
 
         // -- Check
         assert_eq!(expr, Expr::Literal(Some(Value::Nil)));
@@ -276,7 +331,7 @@ mod tests {
 
         // -- Exec
         let mut parser = Parser::new(&tokens);
-        let expr = parser.parse()?;
+        let expr = parser.parse_expr()?;
 
         // -- Check
         assert_eq!(expr, Expr::Literal(Some(Value::Boolean(true))));
@@ -294,7 +349,7 @@ mod tests {
 
         // -- Exec
         let mut parser = Parser::new(&tokens);
-        let expr = parser.parse()?;
+        let expr = parser.parse_expr()?;
 
         // -- Check
         assert_eq!(expr, Expr::Literal(Some(Value::Boolean(false))));
@@ -313,7 +368,7 @@ mod tests {
 
         // -- Exec
         let mut parser = Parser::new(&tokens);
-        let expr = parser.parse()?;
+        let expr = parser.parse_expr()?;
 
         // -- Check
         assert_eq!(
@@ -340,7 +395,7 @@ mod tests {
 
         // -- Exec
         let mut parser = Parser::new(&tokens);
-        let expr = parser.parse()?;
+        let expr = parser.parse_expr()?;
 
         // -- Check
         assert_eq!(

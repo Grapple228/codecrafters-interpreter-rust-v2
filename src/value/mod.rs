@@ -52,6 +52,7 @@ impl Value {
     /// like `!` or `-`
     pub fn calculate(&self, other: Option<&Value>, token: Token) -> Result<Self> {
         let operator = token.clone().token_type;
+        // TODO: Check error messages
 
         match operator {
             // -- Basic calculations

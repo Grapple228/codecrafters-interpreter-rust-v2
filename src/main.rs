@@ -35,6 +35,9 @@ fn main() -> Result<()> {
         "evaluate" => {
             evaluate(filename)?;
         }
+        "run" => {
+            run(filename)?;
+        }
         _ => Err(Error::UnknownCommand(args[0].to_string()))?,
     }
 
@@ -67,7 +70,7 @@ fn parse(filename: &str) -> Result<()> {
     }
 
     let mut parser = Parser::new(&scanner.tokens());
-    let expr = parser.parse();
+    let expr = parser.parse_expr();
 
     match expr {
         Ok(expr) => {
@@ -92,7 +95,7 @@ fn evaluate(filename: &str) -> Result<()> {
     }
 
     let mut parser = Parser::new(&scanner.tokens());
-    let expr = parser.parse();
+    let expr = parser.parse_expr();
 
     if parser.had_error() {
         process::exit(65)
@@ -113,4 +116,8 @@ fn evaluate(filename: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn run(filename: &str) -> Result<()> {
+    todo!()
 }
