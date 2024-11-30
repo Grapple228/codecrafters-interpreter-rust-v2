@@ -26,11 +26,17 @@ impl Parser {
 
         let mut stmts = Vec::new();
 
-        let mut i = 0;
         while !self.is_end() {
-            debug!("{}", i);
-            i += 1;
-            stmts.push(self.statement()?);
+            let stmt = self.statement();
+
+            match stmt {
+                Ok(stmt) => stmts.push(stmt),
+                Err(e) => {
+                    self.had_error = true;
+                    Self::error(e.clone());
+                    return Err(e);
+                }
+            }
         }
 
         Ok(stmts)
@@ -290,7 +296,7 @@ impl Parser {
                 crate::report(token.line, message);
             }
             Error::ExpectExpression(token) => {
-                crate::report(token.line, "Expect expression {}.");
+                crate::report(token.line, format!("Expect expression."));
             }
         }
     }
