@@ -1,6 +1,8 @@
-var quz = 73 + 26 * 20;
-print quz;
-var hello = 26 * 20;
-print quz + hello;
-var foo;
-print foo;
+var world = 2;
+print world;
+var world = 3;
+print world;
+var hello = 5;
+print hello;
+var world = hello;
+print world;

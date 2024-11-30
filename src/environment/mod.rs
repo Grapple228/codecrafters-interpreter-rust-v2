@@ -41,7 +41,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_undefined_variable_err() -> Result<()> {
+    fn test_variable_undefined_err() -> Result<()> {
         let env = Environment::default();
 
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
@@ -52,7 +52,7 @@ mod tests {
     }
 
     #[test]
-    fn test_undefined_unitialized_ok() -> Result<()> {
+    fn test_variable_unitialized_ok() -> Result<()> {
         let mut env = Environment::default();
 
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
@@ -65,7 +65,7 @@ mod tests {
     }
 
     #[test]
-    fn test_undefined_initialized_ok() -> Result<()> {
+    fn test_variable_initialized_ok() -> Result<()> {
         let mut env = Environment::default();
 
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
@@ -74,6 +74,24 @@ mod tests {
         env.define(token.lexeme.clone(), Some(value.clone()));
 
         assert_eq!(env.get(token.clone()), Ok(value));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_variable_redefined_ok() -> Result<()> {
+        let mut env = Environment::default();
+
+        let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
+        let value = Value::Number(5.5);
+
+        env.define(token.lexeme.clone(), Some(value.clone()));
+
+        assert_eq!(env.get(token.clone()), Ok(value));
+
+        env.define(token.lexeme.clone(), Some(Value::Number(6.6)));
+
+        assert_eq!(env.get(token.clone()), Ok(Value::Number(6.6)));
 
         Ok(())
     }
