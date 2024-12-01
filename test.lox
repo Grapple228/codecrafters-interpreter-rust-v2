@@ -1,8 +1,8 @@
-var world = 2;
-print world;
-var world = 3;
-print world;
-var hello = 5;
+var hello = 65;
+var baz;
+var quz;
+
+hello = baz = quz = hello * 2;
 print hello;
-var world = hello;
-print world;
+print baz;
+print baz;

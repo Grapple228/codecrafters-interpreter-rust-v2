@@ -2,7 +2,9 @@ use std::sync::MutexGuard;
 
 use derive_more::derive::From;
 
-use crate::{environment, value, TokenType, Value};
+use crate::value;
+
+use super::environment;
 
 pub type Result<T> = core::result::Result<T, Error>;
 

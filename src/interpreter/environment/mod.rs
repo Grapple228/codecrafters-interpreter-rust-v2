@@ -28,6 +28,16 @@ impl Environment {
     pub fn define(&mut self, name: String, value: Option<Value>) {
         self.values.insert(name, value);
     }
+
+    pub fn assign(&mut self, name: Token, value: Option<Value>) -> Result<()> {
+        match self.values.get_mut(&name.lexeme) {
+            Some(value) => {
+                *value = value.clone();
+                Ok(())
+            }
+            _ => Err(Error::UndefinedVariable(name)),
+        }
+    }
 }
 
 // region:    --- Tests

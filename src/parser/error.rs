@@ -7,6 +7,7 @@ pub enum Error {
     UnknownExpression(Token),
     ExpectExpression(Token),
     UnexpectedToken(Token, String),
+    InvalidAssignmentTarget(Token),
 }
 
 // region:    --- Error Boilerplate

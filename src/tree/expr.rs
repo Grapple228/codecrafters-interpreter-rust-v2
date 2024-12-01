@@ -3,9 +3,10 @@ use std::sync::{Arc, Mutex};
 use tracing::debug;
 
 use crate::interpreter::{self, Result};
+use crate::Value;
 use crate::{
     visitor::{self, Acceptor},
-    AstPrinter, Interpreter, Token, Value, Visitor,
+    AstPrinter, Interpreter, Token, Visitor,
 };
 
 use super::Stmt;
@@ -24,6 +25,10 @@ pub enum Expr {
         right: Box<Expr>,
     },
     Variable(Token),
+    Assignment {
+        name: Token,
+        value: Box<Expr>,
+    },
 }
 
 impl Into<Stmt> for Expr {
@@ -80,6 +85,16 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
                 .lock()
                 .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
                 .get(name.clone()),
+            Expr::Assignment { name, value } => {
+                let value = value.accept(visitor)?;
+
+                visitor
+                    .lock()
+                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
+                    .define(name.lexeme.clone(), Some(value.clone()));
+
+                Ok(value)
+            }
         }
     }
 }
@@ -94,7 +109,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
             } => Self::parenthesize(&visitor, operator.lexeme.clone(), &[left, right]),
             Expr::Grouping(expr) => Self::parenthesize(&visitor, "group", &[expr]),
             Expr::Literal(value) => match value {
-                None => panic!("NONE IS IT RIGHT??"),
+                None => panic!("Must not be None"),
                 Some(Value::String(s)) => s.clone(),
                 Some(Value::Number(n)) => format!("{:?}", n),
                 Some(Value::Boolean(b)) => b.to_string(),
@@ -104,6 +119,9 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 Self::parenthesize(&visitor, operator.lexeme.clone(), &[right])
             }
             Expr::Variable(name) => format!("var {}", name.lexeme),
+            Expr::Assignment { name, value } => {
+                format!("{} = {}", name.lexeme, value.accept(visitor))
+            }
         }
     }
 }

@@ -1,8 +1,6 @@
 pub type Result<T> = core::result::Result<T, Error>;
 
 use std::env;
-use std::fs;
-use std::io::{self, Write};
 use std::process;
 
 use interpreter::AstPrinter;
@@ -12,7 +10,7 @@ use interpreter::Parser;
 use interpreter::Scanner;
 
 fn main() -> Result<()> {
-    interpreter::init();
+    _ = interpreter::init();
 
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -79,7 +77,7 @@ fn parse(filename: &str) -> Result<()> {
 
             println!("{}", result);
         }
-        Err(e) => process::exit(65),
+        Err(_) => process::exit(65),
     }
 
     Ok(())
@@ -112,7 +110,7 @@ fn evaluate(filename: &str) -> Result<()> {
         Ok(value) => {
             println!("{}", value.stringify());
         }
-        Err(e) => process::exit(70),
+        Err(_) => process::exit(70),
     }
 
     Ok(())
@@ -135,7 +133,7 @@ fn run(filename: &str) -> Result<()> {
     }
 
     let mut interpreter = Interpreter::default();
-    let result = interpreter.interpret_stmt(&stmts?);
+    _ = interpreter.interpret_stmt(&stmts?);
 
     if interpreter.had_runtime_error() {
         process::exit(70)

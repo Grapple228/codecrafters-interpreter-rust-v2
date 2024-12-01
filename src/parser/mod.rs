@@ -1,6 +1,6 @@
 use tracing::{debug, info};
 
-use crate::{tree::Expr, Stmt, Token, TokenType, Value, Visitor};
+use crate::{tree::Expr, Stmt, Token, TokenType, Value};
 
 mod error;
 
@@ -20,6 +20,8 @@ impl Parser {
             ..Default::default()
         }
     }
+
+    // region:    --- Statements
 
     pub fn parse_stmt(&mut self) -> Result<Vec<Stmt>> {
         info!("Parsing tokens into Stmt...");
@@ -41,8 +43,6 @@ impl Parser {
 
         Ok(stmts)
     }
-
-    // region:    --- Statements
 
     fn declaration(&mut self) -> Result<Stmt> {
         let stmt = if self.matches(&[TokenType::VAR]) {
@@ -118,7 +118,27 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Expr> {
+        let expr = self.equality()?;
+
+        if self.matches(&[TokenType::EQUAL]) {
+            let equals = self.previous();
+            let value = self.assignment();
+
+            if let Expr::Variable(name) = expr {
+                return Ok(Expr::Assignment {
+                    name,
+                    value: Box::new(value?),
+                });
+            }
+
+            Err(Error::InvalidAssignmentTarget(equals))?;
+        }
+
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Expr> {
@@ -334,6 +354,9 @@ impl Parser {
             }
             Error::ExpectExpression(token) => {
                 crate::report(token.line, format!("Expect expression."));
+            }
+            Error::InvalidAssignmentTarget(token) => {
+                crate::report(token.line, format!("Invalid assignment target."));
             }
         }
     }

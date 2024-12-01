@@ -2,7 +2,7 @@
 
 use derive_more::derive::From;
 
-use crate::{environment, interpreter, parser};
+use crate::{interpreter, parser};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -20,8 +20,6 @@ pub enum Error {
     ParserError(parser::Error),
     #[from]
     InterpreterError(interpreter::Error),
-    #[from]
-    EnvironmentError(environment::Error),
 
     // -- Externals
     #[from]

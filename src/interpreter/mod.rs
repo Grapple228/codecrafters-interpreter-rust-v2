@@ -4,14 +4,15 @@ use std::{
 };
 
 use crate::{
-    environment::{self, Environment},
     value,
-    visitor::Acceptor,
-    Expr, Stmt, Token, TokenType, Value, Visitor, W,
+    visitor::{Acceptor, Visitor},
+    Expr, Stmt, Token, TokenType, Value, W,
 };
 
+mod environment;
 mod error;
 
+use environment::Environment;
 pub use error::{Error, Result};
 use tracing::{debug, info};
 use tracing_subscriber::field::debug;
@@ -65,6 +66,14 @@ impl Interpreter {
             .get(name);
 
         Ok(value?)
+    }
+
+    pub fn assign(&mut self, name: Token, value: Option<Value>) -> Result<()> {
+        self.environment
+            .lock()
+            .map_err(|e| Error::MutexError(e.to_string()))?
+            .assign(name, value)
+            .map_err(Error::from)
     }
 
     fn execute(&self, stmt: impl Into<Stmt>) -> Result<()> {

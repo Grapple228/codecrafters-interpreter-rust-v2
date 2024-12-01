@@ -55,7 +55,15 @@ impl Acceptor<String, &AstPrinter> for Stmt {
     fn accept(&self, visitor: &AstPrinter) -> String {
         match self {
             Stmt::Expression(expr) => expr.accept(visitor),
-            Stmt::Print(expr) => expr.accept(visitor),
+            Stmt::Print(expr) => {
+                let mut result = String::new();
+
+                result.push_str("print (");
+                result.push_str(&expr.accept(visitor));
+                result.push(')');
+
+                result
+            }
             Stmt::Var { name, initializer } => {
                 let mut result = String::new();
 

@@ -9,7 +9,6 @@ use tracing_subscriber::{fmt::format, EnvFilter};
 
 // -- Modules
 mod config;
-mod environment;
 mod error;
 mod extensions;
 mod interpreter;
