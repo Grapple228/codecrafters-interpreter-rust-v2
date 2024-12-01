@@ -138,14 +138,14 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Expr> {
-        let expr = self.equality()?;
+        let expr = self.equality();
 
         if self.matches(&[TokenType::EQUAL]) {
             let equals = self.previous();
             let value = self.assignment();
 
-            if let Expr::Variable(name) = expr {
-                return Ok(Expr::Assignment {
+            if let Expr::Variable(name) = expr.clone()? {
+                return Ok(Expr::Assign {
                     name,
                     value: Box::new(value?),
                 });
@@ -154,7 +154,7 @@ impl Parser {
             Err(Error::InvalidAssignmentTarget(equals))?;
         }
 
-        Ok(expr)
+        expr
     }
 
     fn equality(&mut self) -> Result<Expr> {

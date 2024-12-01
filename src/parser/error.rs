@@ -2,7 +2,7 @@ use crate::{Token, TokenType};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Error {
     UnknownExpression(Token),
     ExpectExpression(Token),

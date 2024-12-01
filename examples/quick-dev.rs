@@ -13,14 +13,14 @@ fn main() -> Result<()> {
 
     scanner.scan_tokens()?;
 
-    debug!(
-        "Scanned tokens: {:#?}",
-        scanner
-            .tokens()
-            .iter()
-            .map(|t| t.to_string())
-            .collect::<Vec<_>>()
-    );
+    // debug!(
+    //     "Scanned tokens: {:#?}",
+    //     scanner
+    //         .tokens()
+    //         .iter()
+    //         .map(|t| t.to_string())
+    //         .collect::<Vec<_>>()
+    // );
 
     if scanner.had_error() {
         process::exit(65)

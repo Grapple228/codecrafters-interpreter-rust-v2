@@ -25,7 +25,7 @@ pub enum Expr {
         right: Box<Expr>,
     },
     Variable(Token),
-    Assignment {
+    Assign {
         name: Token,
         value: Box<Expr>,
     },
@@ -90,7 +90,7 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
 
                 Ok(value)
             }
-            Expr::Assignment { name, value } => {
+            Expr::Assign { name, value } => {
                 let value = value.accept(visitor)?;
 
                 let interpreter = visitor
@@ -128,7 +128,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 Self::parenthesize(&visitor, operator.lexeme.clone(), &[right])
             }
             Expr::Variable(name) => format!("(var {})", name.lexeme),
-            Expr::Assignment { name, value } => {
+            Expr::Assign { name, value } => {
                 format!("{} = {}", name.lexeme, value.accept(visitor))
             }
         }

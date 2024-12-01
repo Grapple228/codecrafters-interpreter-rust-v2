@@ -10,6 +10,8 @@ use std::{
 };
 
 pub use error::{Error, Result};
+use tracing::debug;
+use tracing_subscriber::field::debug;
 
 use crate::{Token, Value, W};
 
@@ -17,12 +19,22 @@ use crate::{Token, Value, W};
 pub struct Environment {
     values: HashMap<String, Option<Value>>,
     enclosing: Option<Rc<RefCell<Environment>>>,
+    id: u32,
 }
+
+static mut mut_id: u32 = 0;
 
 impl Environment {
     pub fn new(enclosing: Option<Rc<RefCell<Environment>>>) -> Self {
+        let id = unsafe {
+            mut_id += 1;
+            mut_id
+        };
+
         Environment {
             enclosing,
+            id,
+
             ..Default::default()
         }
     }
@@ -48,8 +60,9 @@ impl Environment {
     }
 
     pub fn assign(&mut self, name: Token, value: Option<Value>) -> Result<()> {
-        if let Some(value) = self.values.get_mut(&name.lexeme) {
-            *value = value.clone();
+        if let Some(existing) = self.values.get_mut(&name.lexeme) {
+            *existing = value.clone();
+
             return Ok(());
         }
 
