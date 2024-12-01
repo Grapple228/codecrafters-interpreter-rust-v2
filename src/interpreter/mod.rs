@@ -1,5 +1,7 @@
 use std::{
-    borrow::BorrowMut,
+    borrow::{Borrow, BorrowMut},
+    cell::RefCell,
+    rc::Rc,
     sync::{Arc, Mutex},
 };
 
@@ -21,8 +23,7 @@ use tracing_subscriber::field::debug;
 #[derive(Debug, Default, Clone)]
 pub struct Interpreter {
     had_runtime_error: bool,
-    // TODO: maybe could be just Environment
-    environment: Arc<Mutex<Environment>>,
+    pub environment: Rc<RefCell<Environment>>,
 }
 
 impl Visitor<Result<Value>> for &Arc<Mutex<Interpreter>> {
@@ -51,7 +52,7 @@ impl From<W<Interpreter>> for Arc<Mutex<Interpreter>> {
 // endregion: --- Froms
 
 impl Interpreter {
-    pub fn execute_block(&mut self, stmts: &[Stmt], env: Arc<Mutex<Environment>>) -> Result<()> {
+    pub fn execute_block(&mut self, stmts: &[Stmt], env: Rc<RefCell<Environment>>) -> Result<()> {
         let prev = self.environment.clone();
 
         self.environment = env;
@@ -69,37 +70,6 @@ impl Interpreter {
         self.environment = prev;
 
         Ok(())
-    }
-
-    pub fn environment(&self) -> Arc<Mutex<Environment>> {
-        self.environment.clone()
-    }
-
-    pub fn define(&mut self, name: Token, value: Option<Value>) -> Result<()> {
-        self.environment
-            .lock()
-            .map_err(|e| Error::MutexError(e.to_string()))?
-            .define(name, value);
-
-        Ok(())
-    }
-
-    pub fn get(&self, name: Token) -> Result<Value> {
-        let value = self
-            .environment
-            .lock()
-            .map_err(|e| Error::MutexError(e.to_string()))?
-            .get(name);
-
-        Ok(value?)
-    }
-
-    pub fn assign(&mut self, name: Token, value: Option<Value>) -> Result<()> {
-        self.environment
-            .lock()
-            .map_err(|e| Error::MutexError(e.to_string()))?
-            .assign(name, value)
-            .map_err(Error::from)
     }
 
     fn execute(&self, stmt: impl Into<Stmt>) -> Result<()> {
@@ -184,9 +154,6 @@ impl Interpreter {
             Error::EnvironmentError(error) => match error {
                 environment::Error::UndefinedVariable(name) => {
                     crate::report(name.line, format!("Undefined variable '{}'.", name.lexeme))
-                }
-                environment::Error::MutexError(token, message) => {
-                    crate::report(token.line, message)
                 }
             },
             Error::MutexError(message) => unreachable!("{}", message),

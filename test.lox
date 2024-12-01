@@ -1,19 +1,19 @@
-var a = "global a";
-var b = "global b";
-var c = "global c";
+var bar = "global bar";
+var world = "global world";
+var hello = "global hello";
 {
-  var a = "outer a";
-  var b = "outer b";
+  var bar = "outer bar";
+  var world = "outer world";
   {
-    var a = "inner a";
-    print a;
-    print b;
-    print c;
+    var bar = "inner bar";
+    print bar;
+    print world;
+    print hello;
   }
-  print a;
-  print b;
-  print c;
+  print bar;
+  print world;
+  print hello;
 }
-print a;
-print b;
-print c;
+print bar;
+print world;
+print hello;

@@ -81,17 +81,26 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
 
                 Ok(value.calculate(None, operator.clone())?)
             }
-            Expr::Variable(name) => visitor
-                .lock()
-                .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
-                .get(name.clone()),
+            Expr::Variable(name) => {
+                let interpreter = visitor
+                    .lock()
+                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?;
+
+                let value = interpreter.environment.borrow().get(name.clone())?;
+
+                Ok(value)
+            }
             Expr::Assignment { name, value } => {
                 let value = value.accept(visitor)?;
 
-                visitor
+                let interpreter = visitor
                     .lock()
-                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
-                    .define(name.clone(), Some(value.clone()));
+                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?;
+
+                interpreter
+                    .environment
+                    .borrow_mut()
+                    .assign(name.clone(), Some(value.clone()));
 
                 Ok(value)
             }

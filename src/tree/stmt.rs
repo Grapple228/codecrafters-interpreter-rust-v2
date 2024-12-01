@@ -1,16 +1,17 @@
-use std::{
-    borrow::BorrowMut,
-    clone,
-    sync::{Arc, Mutex},
-};
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use tracing::debug;
-use tracing_subscriber::field::debug;
 
-use crate::{interpreter::Environment, visitor::Acceptor, AstPrinter, Interpreter, Token, Visitor};
+use crate::interpreter::{self, Environment, Error, Result};
+use crate::Value;
+use crate::{
+    visitor::{self, Acceptor},
+    AstPrinter, Interpreter, Token, Visitor,
+};
 
 use super::Expr;
-use crate::interpreter::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
@@ -42,10 +43,14 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                     value = Some(initializer.accept(visitor)?);
                 };
 
-                visitor
+                let interpreter = visitor
                     .lock()
-                    .map_err(|e| Error::MutexError(e.to_string()))?
-                    .define(name.clone(), value);
+                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?;
+
+                interpreter
+                    .environment
+                    .borrow_mut()
+                    .define(name.clone(), value.clone());
 
                 Ok(())
             }
@@ -54,8 +59,8 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                     .lock()
                     .map_err(|e| Error::MutexError(e.to_string()))?;
 
-                let env = Environment::new(Some(interpreter.environment()));
-                interpreter.execute_block(stmts, Arc::new(Mutex::new(env)))
+                let env = Environment::new(Some(interpreter.environment.clone()));
+                interpreter.execute_block(stmts, Rc::new(RefCell::new(env)))
             }
         }
     }

@@ -2,8 +2,10 @@ mod error;
 
 use std::{
     borrow::Borrow,
+    cell::RefCell,
     collections::HashMap,
     hash::Hash,
+    rc::Rc,
     sync::{Arc, Mutex},
 };
 
@@ -14,11 +16,11 @@ use crate::{Token, Value, W};
 #[derive(Debug, Clone, Default)]
 pub struct Environment {
     values: HashMap<String, Option<Value>>,
-    enclosing: Option<Arc<Mutex<Environment>>>,
+    enclosing: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
-    pub fn new(enclosing: Option<Arc<Mutex<Environment>>>) -> Self {
+    pub fn new(enclosing: Option<Rc<RefCell<Environment>>>) -> Self {
         Environment {
             enclosing,
             ..Default::default()
@@ -35,10 +37,7 @@ impl Environment {
         }
 
         if let Some(enclosing) = &self.enclosing {
-            return enclosing
-                .lock()
-                .map_err(|e| Error::MutexError(name.clone(), e.to_string()))?
-                .get(name);
+            return enclosing.borrow_mut().get(name);
         }
 
         Err(Error::UndefinedVariable(name))
@@ -55,10 +54,7 @@ impl Environment {
         }
 
         if let Some(enclosing) = &mut self.enclosing {
-            enclosing
-                .lock()
-                .map_err(|e| Error::MutexError(name.clone(), e.to_string()))?
-                .assign(name, value)?;
+            enclosing.borrow_mut().assign(name, value)?;
             return Ok(());
         }
 
