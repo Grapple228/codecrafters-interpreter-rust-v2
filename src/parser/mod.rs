@@ -82,7 +82,23 @@ impl Parser {
             return self.print_statement();
         }
 
+        if self.matches(&[TokenType::LEFT_BRACE]) {
+            return Ok(Stmt::Block(self.block()?));
+        }
+
         self.expression_statement()
+    }
+
+    fn block(&mut self) -> Result<Vec<Stmt>> {
+        let mut statements = Vec::new();
+
+        while !self.check(TokenType::RIGHT_BRACE) && !self.is_end() {
+            statements.push(self.declaration()?);
+        }
+
+        self.consume(TokenType::RIGHT_BRACE, "Expect '}' after block.")?;
+
+        Ok(statements)
     }
 
     fn print_statement(&mut self) -> Result<Stmt> {

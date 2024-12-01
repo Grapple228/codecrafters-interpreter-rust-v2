@@ -36,11 +36,16 @@ fn main() -> Result<()> {
     let stmts = stmts?;
 
     let printer = AstPrinter::default();
-    debug!(
+    println!(
         "Parsed expressions: {:#?}",
         stmts
             .iter()
-            .map(|s| printer.print(s.clone()))
+            .flat_map(|s| printer
+                .print(s.clone())
+                .split('\n')
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>())
             .collect::<Vec<_>>()
     );
 

@@ -5,6 +5,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
     UndefinedVariable(Token),
+    MutexError(Token, String),
 }
 
 // region:    --- Error Boilerplate

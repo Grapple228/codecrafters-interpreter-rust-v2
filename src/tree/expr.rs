@@ -91,7 +91,7 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
                 visitor
                     .lock()
                     .map_err(|e| interpreter::Error::MutexError(e.to_string()))?
-                    .define(name.lexeme.clone(), Some(value.clone()));
+                    .define(name.clone(), Some(value.clone()));
 
                 Ok(value)
             }
@@ -118,7 +118,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
             Expr::Unary { operator, right } => {
                 Self::parenthesize(&visitor, operator.lexeme.clone(), &[right])
             }
-            Expr::Variable(name) => format!("var {}", name.lexeme),
+            Expr::Variable(name) => format!("(var {})", name.lexeme),
             Expr::Assignment { name, value } => {
                 format!("{} = {}", name.lexeme, value.accept(visitor))
             }

@@ -1,42 +1,68 @@
 mod error;
 
-use std::{collections::HashMap, hash::Hash};
+use std::{
+    borrow::Borrow,
+    collections::HashMap,
+    hash::Hash,
+    sync::{Arc, Mutex},
+};
 
 pub use error::{Error, Result};
 
-use crate::{Token, Value};
+use crate::{Token, Value, W};
 
 #[derive(Debug, Clone, Default)]
 pub struct Environment {
     values: HashMap<String, Option<Value>>,
+    enclosing: Option<Arc<Mutex<Environment>>>,
 }
 
 impl Environment {
-    pub fn get(&self, name: Token) -> Result<Value> {
-        match self.values.get(&name.lexeme) {
-            Some(value) => {
-                if let Some(value) = value {
-                    Ok(value.clone())
-                } else {
-                    Ok(Value::Nil)
-                }
-            }
-            _ => Err(Error::UndefinedVariable(name)),
+    pub fn new(enclosing: Option<Arc<Mutex<Environment>>>) -> Self {
+        Environment {
+            enclosing,
+            ..Default::default()
         }
     }
 
-    pub fn define(&mut self, name: String, value: Option<Value>) {
-        self.values.insert(name, value);
+    pub fn get(&self, name: Token) -> Result<Value> {
+        if let Some(value) = self.values.get(&name.lexeme) {
+            return if let Some(value) = value {
+                Ok(value.clone())
+            } else {
+                Ok(Value::Nil)
+            };
+        }
+
+        if let Some(enclosing) = &self.enclosing {
+            return enclosing
+                .lock()
+                .map_err(|e| Error::MutexError(name.clone(), e.to_string()))?
+                .get(name);
+        }
+
+        Err(Error::UndefinedVariable(name))
+    }
+
+    pub fn define(&mut self, name: Token, value: Option<Value>) {
+        self.values.insert(name.lexeme.clone(), value);
     }
 
     pub fn assign(&mut self, name: Token, value: Option<Value>) -> Result<()> {
-        match self.values.get_mut(&name.lexeme) {
-            Some(value) => {
-                *value = value.clone();
-                Ok(())
-            }
-            _ => Err(Error::UndefinedVariable(name)),
+        if let Some(value) = self.values.get_mut(&name.lexeme) {
+            *value = value.clone();
+            return Ok(());
         }
+
+        if let Some(enclosing) = &mut self.enclosing {
+            enclosing
+                .lock()
+                .map_err(|e| Error::MutexError(name.clone(), e.to_string()))?
+                .assign(name, value)?;
+            return Ok(());
+        }
+
+        Err(Error::UndefinedVariable(name))
     }
 }
 
@@ -67,7 +93,7 @@ mod tests {
 
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
 
-        env.define(token.lexeme.clone(), None);
+        env.define(token.clone(), None);
 
         assert_eq!(env.get(token.clone()), Ok(Value::Nil));
 
@@ -81,7 +107,7 @@ mod tests {
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
         let value = Value::Number(5.5);
 
-        env.define(token.lexeme.clone(), Some(value.clone()));
+        env.define(token.clone(), Some(value.clone()));
 
         assert_eq!(env.get(token.clone()), Ok(value));
 
@@ -95,11 +121,11 @@ mod tests {
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
         let value = Value::Number(5.5);
 
-        env.define(token.lexeme.clone(), Some(value.clone()));
+        env.define(token.clone(), Some(value.clone()));
 
         assert_eq!(env.get(token.clone()), Ok(value));
 
-        env.define(token.lexeme.clone(), Some(Value::Number(6.6)));
+        env.define(token.clone(), Some(Value::Number(6.6)));
 
         assert_eq!(env.get(token.clone()), Ok(Value::Number(6.6)));
 

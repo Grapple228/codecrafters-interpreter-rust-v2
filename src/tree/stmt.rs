@@ -1,12 +1,13 @@
 use std::{
     borrow::BorrowMut,
+    clone,
     sync::{Arc, Mutex},
 };
 
 use tracing::debug;
 use tracing_subscriber::field::debug;
 
-use crate::{visitor::Acceptor, AstPrinter, Interpreter, Token, Visitor};
+use crate::{interpreter::Environment, visitor::Acceptor, AstPrinter, Interpreter, Token, Visitor};
 
 use super::Expr;
 use crate::interpreter::{Error, Result};
@@ -19,6 +20,7 @@ pub enum Stmt {
         name: Token,
         initializer: Option<Box<Expr>>,
     },
+    Block(Vec<Stmt>),
 }
 
 impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
@@ -43,9 +45,17 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 visitor
                     .lock()
                     .map_err(|e| Error::MutexError(e.to_string()))?
-                    .define(name.lexeme.clone(), value);
+                    .define(name.clone(), value);
 
                 Ok(())
+            }
+            Stmt::Block(stmts) => {
+                let mut interpreter = visitor
+                    .lock()
+                    .map_err(|e| Error::MutexError(e.to_string()))?;
+
+                let env = Environment::new(Some(interpreter.environment()));
+                interpreter.execute_block(stmts, Arc::new(Mutex::new(env)))
             }
         }
     }
@@ -56,13 +66,7 @@ impl Acceptor<String, &AstPrinter> for Stmt {
         match self {
             Stmt::Expression(expr) => expr.accept(visitor),
             Stmt::Print(expr) => {
-                let mut result = String::new();
-
-                result.push_str("print (");
-                result.push_str(&expr.accept(visitor));
-                result.push(')');
-
-                result
+                format!("print {}", expr.accept(visitor))
             }
             Stmt::Var { name, initializer } => {
                 let mut result = String::new();
@@ -74,6 +78,20 @@ impl Acceptor<String, &AstPrinter> for Stmt {
                     result.push_str(" = ");
                     result.push_str(&initializer.accept(visitor));
                 }
+
+                result
+            }
+            Stmt::Block(stmts) => {
+                let mut result = String::new();
+
+                result.push_str("{\n");
+
+                for stmt in stmts {
+                    result.push_str(&stmt.accept(visitor));
+                    result.push_str("\n");
+                }
+
+                result.push_str("}\n");
 
                 result
             }

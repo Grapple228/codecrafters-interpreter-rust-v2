@@ -1,10 +1,11 @@
-use std::sync::MutexGuard;
+use core::sync;
+use std::sync::{MutexGuard, PoisonError};
 
 use derive_more::derive::From;
 
-use crate::value;
+use crate::{value, Token};
 
-use super::environment;
+use super::environment::{self, Environment};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -14,9 +15,6 @@ pub enum Error {
     ValueError(value::Error),
     #[from]
     EnvironmentError(environment::Error),
-
-    // -- Externals
-    #[from]
     MutexError(String),
 }
 

@@ -12,14 +12,16 @@ use crate::{
 mod environment;
 mod error;
 
-use environment::Environment;
+pub use environment::Environment;
 pub use error::{Error, Result};
+
 use tracing::{debug, info};
 use tracing_subscriber::field::debug;
 
 #[derive(Debug, Default, Clone)]
 pub struct Interpreter {
     had_runtime_error: bool,
+    // TODO: maybe could be just Environment
     environment: Arc<Mutex<Environment>>,
 }
 
@@ -49,7 +51,31 @@ impl From<W<Interpreter>> for Arc<Mutex<Interpreter>> {
 // endregion: --- Froms
 
 impl Interpreter {
-    pub fn define(&mut self, name: String, value: Option<Value>) -> Result<()> {
+    pub fn execute_block(&mut self, stmts: &[Stmt], env: Arc<Mutex<Environment>>) -> Result<()> {
+        let prev = self.environment.clone();
+
+        self.environment = env;
+
+        for stmt in stmts {
+            match self.execute(stmt.clone()) {
+                Ok(_) => {}
+                Err(e) => {
+                    self.environment = prev;
+                    return Err(e);
+                }
+            }
+        }
+
+        self.environment = prev;
+
+        Ok(())
+    }
+
+    pub fn environment(&self) -> Arc<Mutex<Environment>> {
+        self.environment.clone()
+    }
+
+    pub fn define(&mut self, name: Token, value: Option<Value>) -> Result<()> {
         self.environment
             .lock()
             .map_err(|e| Error::MutexError(e.to_string()))?
@@ -159,10 +185,11 @@ impl Interpreter {
                 environment::Error::UndefinedVariable(name) => {
                     crate::report(name.line, format!("Undefined variable '{}'.", name.lexeme))
                 }
+                environment::Error::MutexError(token, message) => {
+                    crate::report(token.line, message)
+                }
             },
-            Error::MutexError(error) => {
-                crate::report(0, format!("Mutex error: {}", error));
-            }
+            Error::MutexError(message) => unreachable!("{}", message),
         }
     }
 }
