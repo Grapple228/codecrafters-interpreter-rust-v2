@@ -66,15 +66,7 @@ impl Callable {
     pub fn stringify(&self) -> String {
         match self {
             Callable::Function { declaration } => match declaration.as_ref() {
-                Stmt::Function { name, params, body } => format!(
-                    "<fn {}({})>",
-                    name.lexeme,
-                    params
-                        .iter()
-                        .map(|p| p.lexeme.clone())
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                ),
+                Stmt::Function { name, params, body } => format!("<fn {}>", name.lexeme,),
                 _ => panic!("not a function"),
             },
             Callable::BuiltIn { name, .. } => format!("<native fn {}>", name),
