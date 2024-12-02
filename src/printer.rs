@@ -1,11 +1,4 @@
-use std::fmt::format;
-
-use tracing::debug;
-
-use crate::{
-    visitor::{Acceptor, Visitor},
-    Expr,
-};
+use crate::visitor::{Acceptor, Visitor};
 
 #[derive(Default, Clone)]
 pub struct AstPrinter;
@@ -32,7 +25,7 @@ mod tests {
     type Error = Box<dyn std::error::Error>;
     type Result<T> = core::result::Result<T, Error>; // For tests.
 
-    use crate::{Token, TokenType, Value};
+    use crate::{Expr, Token, TokenType, Value};
 
     use super::*;
 

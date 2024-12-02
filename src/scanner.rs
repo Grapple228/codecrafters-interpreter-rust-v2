@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::{fs, path::Path};
 
-use tracing::{debug, info};
+use tracing::info;
 
 use crate::extensions::{CharExt, StringExt};
 use crate::Token;
 use crate::Value;
-use crate::{report, Error, Result, TokenType};
+use crate::{report, Result, TokenType};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -266,7 +266,7 @@ impl Scanner {
 
         while !self.is_end() {
             self.start = self.current;
-            self.scan_token();
+            let _ = self.scan_token();
         }
 
         self.tokens.push(Token::eof(self.line));
@@ -285,7 +285,6 @@ impl Scanner {
 mod tests {
     use super::*;
     use anyhow::Result;
-    use tokio::io;
 
     #[test]
     fn test_empty_file_ok() -> Result<()> {
@@ -493,10 +492,6 @@ mod tests {
     fn test_error_ok() -> Result<()> {
         // Fixtures
         let fx_content = ",.$(#";
-        let fx_errors = vec![
-            "[line 1] Error: Unexpected character: $",
-            "[line 1] Error: Unexpected character: #",
-        ];
 
         let fx_tokens = vec![
             "COMMA , null",

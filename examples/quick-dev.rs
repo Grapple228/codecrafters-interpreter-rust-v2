@@ -36,8 +36,7 @@ fn main() -> Result<()> {
     let stmts = stmts?;
 
     let printer = AstPrinter::default();
-    println!("Parsed statements: {:#?}", stmts.clone());
-    println!(
+    debug!(
         "Parsed expressions: {:#?}",
         stmts
             .iter()

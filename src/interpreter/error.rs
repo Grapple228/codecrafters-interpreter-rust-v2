@@ -1,11 +1,9 @@
-use core::sync;
-use std::sync::{MutexGuard, PoisonError};
 
 use derive_more::derive::From;
 
-use crate::{value, Token};
+use crate::value;
 
-use super::environment::{self, Environment};
+use super::environment::{self};
 
 pub type Result<T> = core::result::Result<T, Error>;
 

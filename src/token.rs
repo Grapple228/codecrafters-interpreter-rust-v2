@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-use tracing_subscriber::fmt::format::Format;
 
 use crate::Value;
 

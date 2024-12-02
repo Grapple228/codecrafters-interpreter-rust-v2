@@ -1,39 +1,27 @@
-use crate::{Token, TokenType};
-
-use super::Value;
+use crate::Token;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
     InvalidOperation {
-        left: Value,
-        right: Option<Value>,
         token: Token,
         message: String,
     },
     InvalidType {
-        left: Value,
-        right: Option<Value>,
         token: Token,
         message: String,
     },
     ZeroDivision {
-        left: Value,
-        right: Option<Value>,
         token: Token,
         message: String,
     },
     MustBeNumber {
-        left: Value,
         token: Token,
-        right: Option<Value>,
         message: String,
     },
     MustBeNumberOrString {
-        left: Value,
         token: Token,
-        right: Option<Value>,
         message: String,
     },
     NotCallable {

@@ -17,8 +17,7 @@ mod error;
 pub use environment::Environment;
 pub use error::{Error, Result};
 
-use tracing::{debug, info};
-use tracing_subscriber::field::debug;
+use tracing::info;
 
 #[derive(Debug, Default, Clone)]
 pub struct Interpreter {
@@ -152,36 +151,15 @@ impl Interpreter {
     fn error(error: &Error) {
         match error {
             Error::ValueError(error) => match error {
-                value::Error::InvalidOperation {
-                    left,
-                    right,
-                    token,
-                    message,
-                } => crate::report(token.line, message),
-                value::Error::InvalidType {
-                    left,
-                    right,
-                    token,
-                    message,
-                } => crate::report(token.line, message),
-                value::Error::ZeroDivision {
-                    left,
-                    right,
-                    token,
-                    message,
-                } => crate::report(token.line, message),
-                value::Error::MustBeNumber {
-                    left,
-                    token,
-                    right,
-                    message,
-                } => crate::report(token.line, message),
-                value::Error::MustBeNumberOrString {
-                    left,
-                    token,
-                    right,
-                    message,
-                } => crate::report(token.line, message),
+                value::Error::InvalidOperation { token, message } => {
+                    crate::report(token.line, message)
+                }
+                value::Error::InvalidType { token, message } => crate::report(token.line, message),
+                value::Error::ZeroDivision { token, message } => crate::report(token.line, message),
+                value::Error::MustBeNumber { token, message } => crate::report(token.line, message),
+                value::Error::MustBeNumberOrString { token, message } => {
+                    crate::report(token.line, message)
+                }
                 value::Error::NotCallable { token } => {
                     crate::report(token.line, format!("{} is not callable.", token.lexeme));
                 }

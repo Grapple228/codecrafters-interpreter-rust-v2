@@ -1,11 +1,9 @@
-#![allow(unused)] // For beginning only.
-
 // region:    --- Modules
 
-use std::{fs, path::Path, usize};
+use std::usize;
 
-use tracing::{debug, info};
-use tracing_subscriber::{fmt::format, EnvFilter};
+use tracing::info;
+use tracing_subscriber::EnvFilter;
 
 // -- Modules
 mod config;
@@ -52,7 +50,7 @@ pub fn init() -> Result<()> {
 
     // CONFIG INITIALIZATION
     info!("Loading config...");
-    let config = config();
+    let _ = config();
 
     Ok(())
 }

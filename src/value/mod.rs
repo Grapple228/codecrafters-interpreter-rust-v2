@@ -5,9 +5,8 @@ use std::sync::{Arc, Mutex};
 
 pub use callable::{Callable, CallableFn};
 pub use error::{Error, Result};
-use tracing::debug;
 
-use crate::{extensions::StringExt, interpreter, Interpreter, Token, TokenType};
+use crate::{extensions::StringExt, Interpreter, Token, TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -40,7 +39,7 @@ impl Value {
         args: &[Value],
     ) -> Result<Value> {
         match self {
-            Value::Callable(callable) => callable.call(paren, interpreter, args),
+            Value::Callable(callable) => callable.call(interpreter, args),
             _ => {
                 return Err(Error::NotCallable {
                     token: paren.clone(),
@@ -96,14 +95,10 @@ impl Value {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Number(a - b)),
                 (Value::Number(a), None) => Ok(Value::Number(-a)),
                 (_, None) => Err(Error::MustBeNumber {
-                    left: self.clone(),
                     token: token.clone(),
-                    right: other.cloned(),
                     message: String::from("Operand must be a number."),
                 }),
                 _ => Err(Error::InvalidType {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with numbers."),
                 }),
@@ -115,8 +110,6 @@ impl Value {
                 }
                 // (Value::String(a), None) => Ok(Value::String(a.clone())),
                 _ => Err(Error::InvalidType {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with numbers or strings."),
                 }),
@@ -125,8 +118,6 @@ impl Value {
                 if let (Value::Number(a), Some(Value::Number(b))) = (self, other) {
                     if *b == 0.0 {
                         Err(Error::ZeroDivision {
-                            left: self.clone(),
-                            right: other.cloned(),
                             token,
                             message: String::from("Cannot divide by zero."),
                         })
@@ -135,8 +126,6 @@ impl Value {
                     }
                 } else {
                     Err(Error::InvalidType {
-                        left: self.clone(),
-                        right: other.cloned(),
                         token,
                         message: String::from("Operation must be done with numbers."),
                     })
@@ -145,8 +134,6 @@ impl Value {
             TokenType::STAR => match (self, other) {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Number(a * b)),
                 _ => Err(Error::InvalidType {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with numbers."),
                 }),
@@ -158,8 +145,6 @@ impl Value {
                     Ok(Value::Boolean(!self.is_truthy()))
                 } else {
                     Err(Error::InvalidOperation {
-                        left: self.clone(),
-                        right: other.cloned(),
                         token,
                         message: String::from("Operation must be done with one operand."),
                     })
@@ -170,8 +155,6 @@ impl Value {
             TokenType::EQUAL_EQUAL => match (self, other) {
                 (left, Some(right)) => Ok(Value::Boolean(left.is_equal(right))),
                 _ => Err(Error::InvalidOperation {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with two operands."),
                 }),
@@ -179,8 +162,6 @@ impl Value {
             TokenType::BANG_EQUAL => match (self, other) {
                 (left, Some(right)) => Ok(Value::Boolean(!left.is_equal(right))),
                 _ => Err(Error::InvalidOperation {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with two operands."),
                 }),
@@ -189,8 +170,6 @@ impl Value {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a > b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a > b)),
                 _ => Err(Error::InvalidOperation {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with two operands."),
                 }),
@@ -199,8 +178,6 @@ impl Value {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a >= b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a >= b)),
                 _ => Err(Error::InvalidOperation {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with two operands."),
                 }),
@@ -209,8 +186,6 @@ impl Value {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a < b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a < b)),
                 _ => Err(Error::InvalidOperation {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with two operands."),
                 }),
@@ -219,16 +194,12 @@ impl Value {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Boolean(a <= b)),
                 (Value::String(a), Some(Value::String(b))) => Ok(Value::Boolean(a <= b)),
                 _ => Err(Error::InvalidOperation {
-                    left: self.clone(),
-                    right: other.cloned(),
                     token,
                     message: String::from("Operation must be done with two operands."),
                 }),
             },
 
             _ => Err(Error::InvalidOperation {
-                left: self.clone(),
-                right: other.cloned(),
                 token,
                 message: String::from("Invalid operation."),
             }),
@@ -254,8 +225,6 @@ impl core::fmt::Display for Value {
 mod tests {
     type Error = Box<dyn std::error::Error>;
     type Result<T> = core::result::Result<T, Error>; // For tests.
-
-    use std::fmt::format;
 
     use super::*;
 

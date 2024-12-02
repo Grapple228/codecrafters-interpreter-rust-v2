@@ -1,13 +1,12 @@
-use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use crate::interpreter::Environment;
-use crate::{interpreter, Interpreter, Stmt, Token};
+use crate::{Interpreter, Stmt, Token};
 
+use super::Result;
 use super::Value;
-use super::{Error, Result};
 
 pub type CallableFn = fn(interpreter: &Arc<Mutex<Interpreter>>, args: &[Value]) -> Result<Value>;
 
@@ -34,12 +33,7 @@ impl Callable {
         }
     }
 
-    pub fn call(
-        &self,
-        paren: Token,
-        interpreter: &Arc<Mutex<Interpreter>>,
-        args: &[Value],
-    ) -> Result<Value> {
+    pub fn call(&self, interpreter: &Arc<Mutex<Interpreter>>, args: &[Value]) -> Result<Value> {
         match self {
             Callable::Function { declaration, .. } => {
                 let mut interpreter = interpreter.lock().unwrap();
@@ -47,12 +41,12 @@ impl Callable {
                 let mut env = Environment::new(Some(interpreter.globals.clone()));
 
                 match declaration.as_ref() {
-                    Stmt::Function { name, params, body } => {
+                    Stmt::Function { params, body, .. } => {
                         for (i, arg) in args.iter().enumerate() {
                             env.define(params.get(i).unwrap().lexeme.clone(), Some(arg.to_owned()));
                         }
 
-                        interpreter.execute_block(body, Rc::new(RefCell::new(env)));
+                        _ = interpreter.execute_block(body, Rc::new(RefCell::new(env)));
                     }
                     _ => panic!("not a function"),
                 }
@@ -66,7 +60,7 @@ impl Callable {
     pub fn stringify(&self) -> String {
         match self {
             Callable::Function { declaration } => match declaration.as_ref() {
-                Stmt::Function { name, params, body } => format!("<fn {}>", name.lexeme,),
+                Stmt::Function { name, .. } => format!("<fn {}>", name.lexeme,),
                 _ => panic!("not a function"),
             },
             Callable::BuiltIn { name, .. } => format!("<native fn {}>", name),

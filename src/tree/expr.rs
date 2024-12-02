@@ -1,14 +1,8 @@
-use core::arch;
 use std::sync::{Arc, Mutex};
-
-use tracing::debug;
 
 use crate::interpreter::{self, Result};
 use crate::{value, TokenType, Value};
-use crate::{
-    visitor::{self, Acceptor},
-    AstPrinter, Interpreter, Token, Visitor,
-};
+use crate::{visitor::Acceptor, AstPrinter, Interpreter, Token};
 
 use super::Stmt;
 
@@ -108,7 +102,7 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
                     .lock()
                     .map_err(|e| interpreter::Error::MutexError(e.to_string()))?;
 
-                interpreter
+                _ = interpreter
                     .environment
                     .borrow_mut()
                     .assign(name.clone(), Some(value.clone()));
@@ -197,9 +191,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 right,
             } => Self::parenthesize(&visitor, operator.lexeme.clone(), &[left, right]),
             Expr::Call {
-                callee,
-                arguments,
-                paren,
+                callee, arguments, ..
             } => {
                 let arguments = arguments
                     .iter()

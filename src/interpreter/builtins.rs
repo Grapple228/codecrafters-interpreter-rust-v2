@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::Interpreter;
-use crate::value::{Error, Result};
+use crate::value::Result;
 use crate::{Token, TokenType, Value};
 
 pub fn clock(_interpreter: &Arc<Mutex<Interpreter>>, _args: &[Value]) -> Result<Value> {
@@ -11,6 +11,7 @@ pub fn clock(_interpreter: &Arc<Mutex<Interpreter>>, _args: &[Value]) -> Result<
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
 
+    // Возвращает время в секундах
     Ok(Value::Number(since_the_epoch.as_secs_f64()))
 }
 

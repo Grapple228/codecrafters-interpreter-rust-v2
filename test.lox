@@ -1,3 +1,7 @@
-fun foo(){}
 
-print foo;
+var a = 3;
+
+for(var i = 3; i >= 0; i = i - 1) {
+  print i + a;
+  print clock();
+}

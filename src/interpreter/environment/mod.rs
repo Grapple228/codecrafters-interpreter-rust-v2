@@ -1,19 +1,10 @@
 mod error;
 
-use std::{
-    borrow::Borrow,
-    cell::RefCell,
-    collections::HashMap,
-    hash::Hash,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub use error::{Error, Result};
-use tracing::debug;
-use tracing_subscriber::field::debug;
 
-use crate::{Token, Value, W};
+use crate::{Token, Value};
 
 #[derive(Debug, Clone, Default)]
 pub struct Environment {

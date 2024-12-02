@@ -1,7 +1,4 @@
-use std::f32::consts::E;
-
-use tracing::{debug, info};
-use tracing_subscriber::fmt::format;
+use tracing::info;
 
 use crate::{tree::Expr, Stmt, Token, TokenType, Value};
 
@@ -457,7 +454,6 @@ impl Parser {
         }
 
         if self.matches(&[TokenType::NUMBER, TokenType::STRING]) {
-            let v = self.previous().literal;
             return Ok(Expr::Literal(self.previous().literal));
         }
 

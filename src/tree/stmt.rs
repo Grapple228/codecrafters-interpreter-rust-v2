@@ -2,12 +2,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
-use tracing::debug;
 
 use crate::interpreter::{self, Environment, Error, Result};
 use crate::{
-    visitor::{self, Acceptor},
-    AstPrinter, Interpreter, Token, Visitor,
+    visitor::{Acceptor},
+    AstPrinter, Interpreter, Token,
 };
 use crate::{Callable, Value};
 
@@ -99,7 +98,7 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 Ok(())
             }
             Stmt::Function { name, params, body } => {
-                let mut interpreter = visitor
+                let interpreter = visitor
                     .lock()
                     .map_err(|e| Error::MutexError(e.to_string()))?;
 
@@ -180,11 +179,9 @@ impl Acceptor<String, &AstPrinter> for Stmt {
             Stmt::While { condition, body } => {
                 let mut result = String::new();
 
-                result.push_str("while (");
+                result.push_str("while ");
                 result.push_str(&condition.accept(visitor));
-                result.push_str(") {");
                 result.push_str(&body.accept(visitor));
-                result.push_str("}");
 
                 result
             }
