@@ -36,6 +36,14 @@ pub enum Error {
         right: Option<Value>,
         message: String,
     },
+    NotCallable {
+        token: Token,
+    },
+    InvalidCountOfArguments {
+        token: Token,
+        count: usize,
+        expected: usize,
+    },
 }
 
 // region:    --- Error Boilerplate

@@ -1,6 +1,7 @@
 use std::f32::consts::E;
 
 use tracing::{debug, info};
+use tracing_subscriber::fmt::format;
 
 use crate::{tree::Expr, Stmt, Token, TokenType, Value};
 
@@ -47,7 +48,9 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Stmt> {
-        let stmt = if self.matches(&[TokenType::VAR]) {
+        let stmt = if self.matches(&[TokenType::FUN]) {
+            self.function("function")
+        } else if self.matches(&[TokenType::VAR]) {
             self.var_declaration()
         } else {
             self.statement()
@@ -60,6 +63,39 @@ impl Parser {
                 Err(e)
             }
         }
+    }
+
+    fn function(&mut self, kind: impl Into<String>) -> Result<Stmt> {
+        let name = self.consume(TokenType::IDENTIFIER, "Expect function name.")?;
+
+        self.consume(TokenType::LEFT_PAREN, "Expect '(' after function name.")?;
+
+        let mut params = Vec::new();
+
+        if !self.check(TokenType::RIGHT_PAREN) {
+            loop {
+                if params.len() >= 255 {
+                    return Err(Error::TooManyArguments(self.peek()));
+                }
+
+                params.push(self.consume(TokenType::IDENTIFIER, "Expect parameter name.")?);
+
+                if !self.matches(&[TokenType::COMMA]) {
+                    break;
+                }
+            }
+        }
+
+        self.consume(TokenType::RIGHT_PAREN, "Expect ')' after parameters.")?;
+
+        self.consume(
+            TokenType::LEFT_BRACE,
+            format!("Expect '{{' before {} body.", kind.into()),
+        )?;
+
+        let body = self.block()?;
+
+        Ok(Stmt::Function { name, params, body })
     }
 
     fn var_declaration(&mut self) -> Result<Stmt> {
@@ -366,7 +402,47 @@ impl Parser {
             });
         }
 
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<Expr> {
+        let mut expr = self.primary();
+
+        loop {
+            if self.matches(&[TokenType::LEFT_PAREN]) {
+                expr = self.finish_call(expr?);
+            } else {
+                break;
+            }
+        }
+
+        expr
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr> {
+        let mut arguments = Vec::new();
+
+        if !self.check(TokenType::RIGHT_PAREN) {
+            loop {
+                if arguments.len() >= 255 {
+                    return Err(Error::TooManyArguments(self.peek()));
+                }
+
+                arguments.push(self.expression()?);
+
+                if !self.matches(&[TokenType::COMMA]) {
+                    break;
+                }
+            }
+        }
+
+        let paren = self.consume(TokenType::RIGHT_PAREN, "Expect ')' after arguments.")?;
+
+        Ok(Expr::Call {
+            callee: Box::new(callee),
+            paren,
+            arguments,
+        })
     }
 
     fn primary(&mut self) -> Result<Expr> {
@@ -498,6 +574,9 @@ impl Parser {
             }
             Error::InvalidAssignmentTarget(token) => {
                 crate::report(token.line, format!("Invalid assignment target."));
+            }
+            Error::TooManyArguments(token) => {
+                crate::report(token.line, format!("Can't have more than 255 arguments."));
             }
         }
     }

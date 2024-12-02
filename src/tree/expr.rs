@@ -1,13 +1,14 @@
+use core::arch;
 use std::sync::{Arc, Mutex};
 
 use tracing::debug;
 
 use crate::interpreter::{self, Result};
+use crate::{value, TokenType, Value};
 use crate::{
     visitor::{self, Acceptor},
     AstPrinter, Interpreter, Token, Visitor,
 };
-use crate::{TokenType, Value};
 
 use super::Stmt;
 
@@ -33,6 +34,11 @@ pub enum Expr {
         left: Box<Expr>,
         operator: Token,
         right: Box<Expr>,
+    },
+    Call {
+        callee: Box<Expr>,
+        paren: Token,
+        arguments: Vec<Expr>,
     },
 }
 
@@ -128,6 +134,35 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
 
                 right.accept(visitor)
             }
+            Expr::Call {
+                callee,
+                arguments,
+                paren,
+            } => {
+                let callee = callee.accept(visitor)?;
+
+                let arguments = arguments
+                    .iter()
+                    .map(|arg| arg.accept(visitor))
+                    .collect::<Result<Vec<Value>>>()?;
+
+                if !callee.is_callable() {
+                    return Err(value::Error::NotCallable {
+                        token: paren.clone(),
+                    })?;
+                }
+
+                let arity = callee.arity();
+                if arguments.len() != arity {
+                    return Err(value::Error::InvalidCountOfArguments {
+                        token: paren.clone(),
+                        count: arguments.len(),
+                        expected: arity,
+                    })?;
+                }
+
+                Ok(callee.call(paren.clone(), visitor, &arguments)?)
+            }
         }
     }
 }
@@ -147,11 +182,12 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 Some(Value::Number(n)) => format!("{:?}", n),
                 Some(Value::Boolean(b)) => b.to_string(),
                 Some(Value::Nil) => String::from("nil"),
+                Some(Value::Callable(c)) => c.stringify(),
             },
             Expr::Unary { operator, right } => {
                 Self::parenthesize(&visitor, operator.lexeme.clone(), &[right])
             }
-            Expr::Variable(name) => format!("(var {})", name.lexeme),
+            Expr::Variable(name) => format!("{}", name.lexeme),
             Expr::Assign { name, value } => {
                 format!("{} = {}", name.lexeme, value.accept(visitor))
             }
@@ -160,6 +196,19 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 operator,
                 right,
             } => Self::parenthesize(&visitor, operator.lexeme.clone(), &[left, right]),
+            Expr::Call {
+                callee,
+                arguments,
+                paren,
+            } => {
+                let arguments = arguments
+                    .iter()
+                    .map(|arg| arg.accept(visitor))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+
+                format!("{}({})", callee.accept(visitor), arguments)
+            }
         }
     }
 }

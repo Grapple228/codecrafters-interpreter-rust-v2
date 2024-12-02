@@ -29,7 +29,7 @@ pub use printer::AstPrinter;
 pub use scanner::Scanner;
 pub use token::{Token, TokenType};
 pub use tree::{Expr, Stmt};
-pub use value::Value;
+pub use value::{Callable, CallableFn, Value};
 pub use visitor::Visitor;
 
 // endregion: --- Modules

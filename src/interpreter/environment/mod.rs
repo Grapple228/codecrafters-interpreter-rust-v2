@@ -45,8 +45,8 @@ impl Environment {
         Err(Error::UndefinedVariable(name))
     }
 
-    pub fn define(&mut self, name: Token, value: Option<Value>) {
-        self.values.insert(name.lexeme.clone(), value);
+    pub fn define(&mut self, name: impl Into<String>, value: Option<Value>) {
+        self.values.insert(name.into(), value);
     }
 
     pub fn assign(&mut self, name: Token, value: Option<Value>) -> Result<()> {
@@ -92,7 +92,7 @@ mod tests {
 
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
 
-        env.define(token.clone(), None);
+        env.define(token.lexeme.clone(), None);
 
         assert_eq!(env.get(token.clone()), Ok(Value::Nil));
 
@@ -106,7 +106,7 @@ mod tests {
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
         let value = Value::Number(5.5);
 
-        env.define(token.clone(), Some(value.clone()));
+        env.define(token.lexeme.clone(), Some(value.clone()));
 
         assert_eq!(env.get(token.clone()), Ok(value));
 
@@ -120,11 +120,11 @@ mod tests {
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
         let value = Value::Number(5.5);
 
-        env.define(token.clone(), Some(value.clone()));
+        env.define(token.lexeme.clone(), Some(value.clone()));
 
         assert_eq!(env.get(token.clone()), Ok(value));
 
-        env.define(token.clone(), Some(Value::Number(6.6)));
+        env.define(token.lexeme.clone(), Some(Value::Number(6.6)));
 
         assert_eq!(env.get(token.clone()), Ok(Value::Number(6.6)));
 

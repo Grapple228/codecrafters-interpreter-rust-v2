@@ -8,6 +8,7 @@ pub enum Error {
     ExpectExpression(Token),
     UnexpectedToken(Token, String),
     InvalidAssignmentTarget(Token),
+    TooManyArguments(Token),
 }
 
 // region:    --- Error Boilerplate

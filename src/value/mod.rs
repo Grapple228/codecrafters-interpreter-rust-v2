@@ -1,9 +1,13 @@
+mod callable;
 mod error;
 
+use std::sync::{Arc, Mutex};
+
+pub use callable::{Callable, CallableFn};
 pub use error::{Error, Result};
 use tracing::debug;
 
-use crate::{extensions::StringExt, Token, TokenType};
+use crate::{extensions::StringExt, interpreter, Interpreter, Token, TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -11,9 +15,40 @@ pub enum Value {
     Number(f64),
     Boolean(bool),
     Nil,
+    Callable(Callable),
 }
 
 impl Value {
+    pub fn arity(&self) -> usize {
+        match self {
+            Value::Callable(callable) => callable.arity(),
+            _ => 0,
+        }
+    }
+
+    pub fn is_callable(&self) -> bool {
+        match self {
+            Value::Callable(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn call(
+        &self,
+        paren: Token,
+        interpreter: &Arc<Mutex<Interpreter>>,
+        args: &[Value],
+    ) -> Result<Value> {
+        match self {
+            Value::Callable(callable) => callable.call(paren, interpreter, args),
+            _ => {
+                return Err(Error::NotCallable {
+                    token: paren.clone(),
+                })
+            }
+        }
+    }
+
     pub fn stringify(&self) -> String {
         match self {
             Value::String(s) => s.clone(),
@@ -27,6 +62,7 @@ impl Value {
             }
             Value::Boolean(b) => b.to_string(),
             Value::Nil => "nil".to_string(),
+            Value::Callable(callable) => callable.stringify(),
         }
     }
 
@@ -207,6 +243,7 @@ impl core::fmt::Display for Value {
             Value::Number(n) => write!(fmt, "{:?}", n),
             Value::Boolean(b) => write!(fmt, "{}", b),
             Value::Nil => write!(fmt, "nil"),
+            Value::Callable(c) => write!(fmt, "{}", c.stringify()),
         }
     }
 }

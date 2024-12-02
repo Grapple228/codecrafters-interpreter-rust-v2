@@ -1,16 +1,16 @@
 use std::{
-    borrow::{Borrow, BorrowMut},
     cell::RefCell,
     rc::Rc,
     sync::{Arc, Mutex},
 };
 
 use crate::{
-    value,
+    value::{self, CallableFn},
     visitor::{Acceptor, Visitor},
-    Expr, Stmt, Token, TokenType, Value, W,
+    Callable, Expr, Stmt, Token, TokenType, Value, W,
 };
 
+mod builtins;
 mod environment;
 mod error;
 
@@ -24,6 +24,7 @@ use tracing_subscriber::field::debug;
 pub struct Interpreter {
     had_runtime_error: bool,
     pub environment: Rc<RefCell<Environment>>,
+    pub globals: Rc<RefCell<Environment>>,
 }
 
 impl Visitor<Result<Value>> for &Arc<Mutex<Interpreter>> {
@@ -52,6 +53,37 @@ impl From<W<Interpreter>> for Arc<Mutex<Interpreter>> {
 // endregion: --- Froms
 
 impl Interpreter {
+    pub fn default() -> Self {
+        let globals = Rc::new(RefCell::new(Environment::default()));
+
+        let mut interpreter = Self {
+            globals: globals.clone(),
+            environment: globals,
+            ..Default::default()
+        };
+
+        interpreter.define_natives();
+
+        interpreter
+    }
+
+    fn define_natives(&mut self) {
+        self.define_native("clock", 0, builtins::clock);
+        self.define_native("sum", 2, builtins::sum);
+    }
+
+    fn define_native(&mut self, name: impl Into<String>, arity: usize, func: CallableFn) {
+        let name: String = name.into();
+
+        let value = Value::Callable(Callable::BuiltIn {
+            arity,
+            name: Box::new(Token::new(TokenType::IDENTIFIER, name.clone(), None, 0)),
+            function: func,
+        });
+
+        self.globals.borrow_mut().define(name, Some(value));
+    }
+
     pub fn execute_block(&mut self, stmts: &[Stmt], env: Rc<RefCell<Environment>>) -> Result<()> {
         let prev = self.environment.clone();
 
@@ -150,6 +182,22 @@ impl Interpreter {
                     right,
                     message,
                 } => crate::report(token.line, message),
+                value::Error::NotCallable { token } => {
+                    crate::report(token.line, format!("{} is not callable.", token.lexeme));
+                }
+                value::Error::InvalidCountOfArguments {
+                    token,
+                    count,
+                    expected,
+                } => {
+                    crate::report(
+                        token.line,
+                        format!(
+                            "{} expected {} arguments but got {}.",
+                            token.lexeme, expected, count
+                        ),
+                    );
+                }
             },
             Error::EnvironmentError(error) => match error {
                 environment::Error::UndefinedVariable(name) => {

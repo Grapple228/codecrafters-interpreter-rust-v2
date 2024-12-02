@@ -5,11 +5,11 @@ use std::sync::{Arc, Mutex};
 use tracing::debug;
 
 use crate::interpreter::{self, Environment, Error, Result};
-use crate::Value;
 use crate::{
     visitor::{self, Acceptor},
     AstPrinter, Interpreter, Token, Visitor,
 };
+use crate::{Callable, Value};
 
 use super::Expr;
 
@@ -30,6 +30,11 @@ pub enum Stmt {
     While {
         condition: Box<Expr>,
         body: Box<Stmt>,
+    },
+    Function {
+        name: Token,
+        params: Vec<Token>,
+        body: Vec<Stmt>,
     },
 }
 
@@ -59,7 +64,7 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 interpreter
                     .environment
                     .borrow_mut()
-                    .define(name.clone(), value.clone());
+                    .define(name.lexeme.clone(), value.clone());
 
                 Ok(())
             }
@@ -90,6 +95,26 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 while condition.accept(visitor)?.is_truthy() {
                     body.accept(visitor)?
                 }
+
+                Ok(())
+            }
+            Stmt::Function { name, params, body } => {
+                let mut interpreter = visitor
+                    .lock()
+                    .map_err(|e| Error::MutexError(e.to_string()))?;
+
+                let value = Value::Callable(Callable::Function {
+                    declaration: Box::new(Stmt::Function {
+                        name: name.clone(),
+                        params: params.clone(),
+                        body: body.clone(),
+                    }),
+                });
+
+                interpreter
+                    .environment
+                    .borrow_mut()
+                    .define(name.lexeme.clone(), Some(value));
 
                 Ok(())
             }
@@ -159,6 +184,28 @@ impl Acceptor<String, &AstPrinter> for Stmt {
                 result.push_str(&condition.accept(visitor));
                 result.push_str(") {");
                 result.push_str(&body.accept(visitor));
+                result.push_str("}");
+
+                result
+            }
+            Stmt::Function { name, params, body } => {
+                let mut result = String::new();
+
+                result.push_str("fn ");
+                result.push_str(&name.lexeme);
+
+                result.push_str("(");
+                result.push_str(
+                    &params
+                        .iter()
+                        .map(|p| p.lexeme.clone())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                );
+                result.push_str(") {");
+                for b in body {
+                    result.push_str(&b.accept(visitor));
+                }
                 result.push_str("}");
 
                 result
