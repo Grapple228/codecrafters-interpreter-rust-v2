@@ -22,6 +22,11 @@ pub enum Stmt {
         initializer: Option<Box<Expr>>,
     },
     Block(Vec<Stmt>),
+    If {
+        condition: Box<Expr>,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
+    },
 }
 
 impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
@@ -62,6 +67,21 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 let env = Environment::new(Some(interpreter.environment.clone()));
                 interpreter.execute_block(stmts, Rc::new(RefCell::new(env)))
             }
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                let value = condition.accept(visitor)?;
+
+                if value.is_truthy() {
+                    then_branch.accept(visitor)
+                } else if let Some(else_branch) = else_branch {
+                    else_branch.accept(visitor)
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 }
@@ -97,6 +117,27 @@ impl Acceptor<String, &AstPrinter> for Stmt {
                 }
 
                 result.push_str("}\n");
+
+                result
+            }
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                let mut result = String::new();
+
+                result.push_str("if (");
+                result.push_str(&condition.accept(visitor));
+                result.push_str(") {");
+                result.push_str(&then_branch.accept(visitor));
+                result.push_str("}");
+
+                if let Some(else_branch) = else_branch {
+                    result.push_str(" else {");
+                    result.push_str(&else_branch.accept(visitor));
+                    result.push_str("}");
+                }
 
                 result
             }

@@ -3,11 +3,11 @@ use std::sync::{Arc, Mutex};
 use tracing::debug;
 
 use crate::interpreter::{self, Result};
-use crate::Value;
 use crate::{
     visitor::{self, Acceptor},
     AstPrinter, Interpreter, Token, Visitor,
 };
+use crate::{TokenType, Value};
 
 use super::Stmt;
 
@@ -28,6 +28,11 @@ pub enum Expr {
     Assign {
         name: Token,
         value: Box<Expr>,
+    },
+    Logical {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
     },
 }
 
@@ -104,6 +109,25 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
 
                 Ok(value)
             }
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => {
+                let left = left.accept(visitor)?;
+
+                if operator.token_type == TokenType::OR {
+                    if left.is_truthy() {
+                        return Ok(left);
+                    }
+                } else {
+                    if !left.is_truthy() {
+                        return Ok(left);
+                    }
+                }
+
+                right.accept(visitor)
+            }
         }
     }
 }
@@ -131,6 +155,11 @@ impl Acceptor<String, &AstPrinter> for Expr {
             Expr::Assign { name, value } => {
                 format!("{} = {}", name.lexeme, value.accept(visitor))
             }
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => Self::parenthesize(&visitor, operator.lexeme.clone(), &[left, right]),
         }
     }
 }

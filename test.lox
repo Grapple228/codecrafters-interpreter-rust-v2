@@ -1,17 +1,2 @@
-{
-  var quz = "outer quz";
-  var bar = "outer bar";
-
-  {
-    quz = "modified quz";
-    var bar = "inner bar";
-
-    print quz;
-    print bar;
-  }
-
-  print quz;
-  print bar;
-}
-
-print bar;
+print "hi" or 2; // "hi".
+print nil or "yes"; // "yes".

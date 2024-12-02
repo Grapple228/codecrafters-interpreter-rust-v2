@@ -19,22 +19,12 @@ use crate::{Token, Value, W};
 pub struct Environment {
     values: HashMap<String, Option<Value>>,
     enclosing: Option<Rc<RefCell<Environment>>>,
-    id: u32,
 }
-
-static mut mut_id: u32 = 0;
 
 impl Environment {
     pub fn new(enclosing: Option<Rc<RefCell<Environment>>>) -> Self {
-        let id = unsafe {
-            mut_id += 1;
-            mut_id
-        };
-
         Environment {
             enclosing,
-            id,
-
             ..Default::default()
         }
     }
