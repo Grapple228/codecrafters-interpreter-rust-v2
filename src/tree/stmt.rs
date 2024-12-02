@@ -2,13 +2,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
-
 use crate::interpreter::{self, Environment, Error, Result};
-use crate::{
-    visitor::{Acceptor},
-    AstPrinter, Interpreter, Token,
-};
-use crate::{Callable, Value};
+use crate::{value, Callable, Value};
+use crate::{visitor::Acceptor, AstPrinter, Interpreter, Token};
 
 use super::Expr;
 
@@ -34,6 +30,10 @@ pub enum Stmt {
         name: Token,
         params: Vec<Token>,
         body: Vec<Stmt>,
+    },
+    Return {
+        keyword: Token,
+        value: Option<Box<Expr>>,
     },
 }
 
@@ -116,6 +116,15 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                     .define(name.lexeme.clone(), Some(value));
 
                 Ok(())
+            }
+            Stmt::Return { value, .. } => {
+                let mut result = Value::Nil;
+
+                if let Some(value) = value {
+                    result = value.accept(visitor)?;
+                }
+
+                Err(Error::Return(result))?
             }
         }
     }
@@ -204,6 +213,18 @@ impl Acceptor<String, &AstPrinter> for Stmt {
                     result.push_str(&b.accept(visitor));
                 }
                 result.push_str("}");
+
+                result
+            }
+            Stmt::Return { value, .. } => {
+                let mut result = String::new();
+
+                if let Some(value) = value {
+                    result.push_str("return ");
+                    result.push_str(&value.accept(visitor));
+                } else {
+                    result.push_str("return");
+                }
 
                 result
             }

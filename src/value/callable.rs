@@ -2,11 +2,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
-use crate::interpreter::Environment;
+use crate::interpreter::{self, Environment};
 use crate::{Interpreter, Stmt, Token};
 
-use super::Result;
 use super::Value;
+use interpreter::{Error, Result};
 
 pub type CallableFn = fn(interpreter: &Arc<Mutex<Interpreter>>, args: &[Value]) -> Result<Value>;
 
@@ -40,18 +40,22 @@ impl Callable {
 
                 let mut env = Environment::new(Some(interpreter.globals.clone()));
 
-                match declaration.as_ref() {
+                let result = match declaration.as_ref() {
                     Stmt::Function { params, body, .. } => {
                         for (i, arg) in args.iter().enumerate() {
                             env.define(params.get(i).unwrap().lexeme.clone(), Some(arg.to_owned()));
                         }
 
-                        _ = interpreter.execute_block(body, Rc::new(RefCell::new(env)));
+                        match interpreter.execute_block(body, Rc::new(RefCell::new(env))) {
+                            Ok(_) => Ok(Value::Nil),
+                            Err(interpreter::Error::Return(value)) => Ok(value),
+                            Err(e) => Err(e),
+                        }
                     }
                     _ => panic!("not a function"),
-                }
+                };
 
-                Ok(Value::Nil)
+                result
             }
             Callable::BuiltIn { function, .. } => function(interpreter, args),
         }

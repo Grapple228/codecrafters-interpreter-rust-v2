@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::Interpreter;
-use crate::value::Result;
+use crate::interpreter::Result;
 use crate::{Token, TokenType, Value};
 
 pub fn clock(_interpreter: &Arc<Mutex<Interpreter>>, _args: &[Value]) -> Result<Value> {
@@ -23,5 +23,5 @@ pub fn sum(_interpreter: &Arc<Mutex<Interpreter>>, args: &[Value]) -> Result<Val
 
     println!("Sum: {:#?} + {:#?} = {:#?}", a, b, res);
 
-    res
+    Ok(res?)
 }

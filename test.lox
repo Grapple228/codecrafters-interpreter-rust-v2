@@ -1,7 +1,13 @@
+fun makeCounter() {
+  var i = 0;
+  fun count() {
+    i = i + 1;
+    print i;
+  }
 
-var a = 3;
-
-for(var i = 3; i >= 0; i = i - 1) {
-  print i + a;
-  print clock();
+  return count;
 }
+
+var counter = makeCounter();
+counter(); // "1".
+counter(); // "2".

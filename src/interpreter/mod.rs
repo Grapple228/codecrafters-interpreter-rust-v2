@@ -183,6 +183,7 @@ impl Interpreter {
                 }
             },
             Error::MutexError(message) => unreachable!("{}", message),
+            Error::Return(_) => unreachable!(),
         }
     }
 }

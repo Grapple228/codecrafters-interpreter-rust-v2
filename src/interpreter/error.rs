@@ -1,7 +1,6 @@
-
 use derive_more::derive::From;
 
-use crate::value;
+use crate::{value, Value};
 
 use super::environment::{self};
 
@@ -14,6 +13,7 @@ pub enum Error {
     #[from]
     EnvironmentError(environment::Error),
     MutexError(String),
+    Return(Value),
 }
 
 // region:    --- Error Boilerplate

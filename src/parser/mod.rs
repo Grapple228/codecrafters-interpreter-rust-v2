@@ -125,6 +125,10 @@ impl Parser {
             return self.print_statement();
         }
 
+        if self.matches(&[TokenType::RETURN]) {
+            return self.return_statement();
+        }
+
         if self.matches(&[TokenType::WHILE]) {
             return self.while_statement();
         }
@@ -134,6 +138,19 @@ impl Parser {
         }
 
         self.expression_statement()
+    }
+
+    fn return_statement(&mut self) -> Result<Stmt> {
+        let keyword = self.previous();
+        let mut value = None;
+
+        if !self.check(TokenType::SEMICOLON) {
+            value = Some(Box::new(self.expression()?));
+        }
+
+        self.consume(TokenType::SEMICOLON, "Expect ';' after return value.")?;
+
+        Ok(Stmt::Return { keyword, value })
     }
 
     fn for_statement(&mut self) -> Result<Stmt> {

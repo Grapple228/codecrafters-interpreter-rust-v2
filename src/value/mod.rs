@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 pub use callable::{Callable, CallableFn};
 pub use error::{Error, Result};
 
-use crate::{extensions::StringExt, Interpreter, Token, TokenType};
+use crate::{extensions::StringExt, interpreter, Interpreter, Token, TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -37,13 +37,13 @@ impl Value {
         paren: Token,
         interpreter: &Arc<Mutex<Interpreter>>,
         args: &[Value],
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, interpreter::Error> {
         match self {
             Value::Callable(callable) => callable.call(interpreter, args),
             _ => {
                 return Err(Error::NotCallable {
                     token: paren.clone(),
-                })
+                })?;
             }
         }
     }
