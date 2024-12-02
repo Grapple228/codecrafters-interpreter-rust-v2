@@ -1,8 +1,4 @@
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     value::{self, CallableFn},
@@ -14,25 +10,27 @@ mod builtins;
 mod environment;
 mod error;
 
-pub use environment::Environment;
+pub use environment::{Environment, MutEnv};
 pub use error::{Error, Result};
 
 use tracing::info;
 
+pub type MutInterpreter = Rc<RefCell<Interpreter>>;
+
 #[derive(Debug, Default, Clone)]
 pub struct Interpreter {
     had_runtime_error: bool,
-    pub environment: Rc<RefCell<Environment>>,
-    pub globals: Rc<RefCell<Environment>>,
+    pub environment: MutEnv,
+    pub globals: MutEnv,
 }
 
-impl Visitor<Result<Value>> for &Arc<Mutex<Interpreter>> {
+impl Visitor<Result<Value>> for &MutInterpreter {
     fn visit(&self, acceptor: impl Acceptor<Result<Value>, Self>) -> Result<Value> {
         acceptor.accept(&self)
     }
 }
 
-impl Visitor<Result<()>> for &Arc<Mutex<Interpreter>> {
+impl Visitor<Result<()>> for &MutInterpreter {
     fn visit(&self, acceptor: impl Acceptor<Result<()>, Self>) -> Result<()>
     where
         Self: Sized,
@@ -43,9 +41,9 @@ impl Visitor<Result<()>> for &Arc<Mutex<Interpreter>> {
 
 // region:    --- Froms
 
-impl From<W<Interpreter>> for Arc<Mutex<Interpreter>> {
+impl From<W<Interpreter>> for MutInterpreter {
     fn from(value: W<Interpreter>) -> Self {
-        Arc::new(Mutex::new(value.0))
+        Rc::new(RefCell::new(value.0))
     }
 }
 
@@ -83,7 +81,7 @@ impl Interpreter {
         self.globals.borrow_mut().define(name, Some(value));
     }
 
-    pub fn execute_block(&mut self, stmts: &[Stmt], env: Rc<RefCell<Environment>>) -> Result<()> {
+    pub fn execute_block(&mut self, stmts: &[Stmt], env: MutEnv) -> Result<()> {
         let prev = self.environment.clone();
 
         self.environment = env;

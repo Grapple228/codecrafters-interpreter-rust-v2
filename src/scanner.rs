@@ -284,7 +284,8 @@ impl Scanner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyhow::Result;
+    type Error = Box<dyn std::error::Error>;
+    type Result<T> = core::result::Result<T, Error>; // For tests.
 
     #[test]
     fn test_empty_file_ok() -> Result<()> {

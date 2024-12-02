@@ -1,7 +1,5 @@
 use crate::Token;
 
-use super::Value;
-
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug)]

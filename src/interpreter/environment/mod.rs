@@ -6,14 +6,16 @@ pub use error::{Error, Result};
 
 use crate::{Token, Value};
 
-#[derive(Debug, Clone, Default)]
+pub type MutEnv = Rc<RefCell<Environment>>;
+
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Environment {
     values: HashMap<String, Option<Value>>,
-    enclosing: Option<Rc<RefCell<Environment>>>,
+    enclosing: Option<MutEnv>,
 }
 
 impl Environment {
-    pub fn new(enclosing: Option<Rc<RefCell<Environment>>>) -> Self {
+    pub fn new(enclosing: Option<MutEnv>) -> Self {
         Environment {
             enclosing,
             ..Default::default()
@@ -30,7 +32,7 @@ impl Environment {
         }
 
         if let Some(enclosing) = &self.enclosing {
-            return enclosing.borrow_mut().get(name);
+            return enclosing.borrow().get(name);
         }
 
         Err(Error::UndefinedVariable(name))
@@ -48,7 +50,7 @@ impl Environment {
         }
 
         if let Some(enclosing) = &mut self.enclosing {
-            enclosing.borrow_mut().assign(name, value)?;
+            enclosing.borrow_mut().assign(name, value.clone())?;
             return Ok(());
         }
 

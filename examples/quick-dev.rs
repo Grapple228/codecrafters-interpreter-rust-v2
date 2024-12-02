@@ -2,7 +2,9 @@
 
 use std::{io::stderr, process};
 
-use anyhow::Result;
+type Error = Box<dyn std::error::Error>;
+type Result<T> = core::result::Result<T, Error>; // For tests.
+
 use interpreter::{AstPrinter, Expr, Interpreter, Parser, Scanner, Token, TokenType, Value};
 use tracing::debug;
 

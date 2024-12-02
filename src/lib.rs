@@ -21,7 +21,7 @@ mod visitor;
 // -- Flatten
 pub use config::config;
 pub use error::{Error, Result};
-pub use interpreter::Interpreter;
+pub use interpreter::{Interpreter, MutInterpreter};
 pub use parser::Parser;
 pub use printer::AstPrinter;
 pub use scanner::Scanner;

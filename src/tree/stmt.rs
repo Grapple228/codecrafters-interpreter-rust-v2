@@ -1,10 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
-use crate::interpreter::{self, Environment, Error, Result};
-use crate::{value, Callable, Value};
-use crate::{visitor::Acceptor, AstPrinter, Interpreter, Token};
+use crate::interpreter::{Environment, Error, Result};
+use crate::{visitor::Acceptor, AstPrinter, Token};
+use crate::{Callable, MutInterpreter, Value};
 
 use super::Expr;
 
@@ -37,8 +36,8 @@ pub enum Stmt {
     },
 }
 
-impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
-    fn accept(&self, visitor: &Arc<Mutex<Interpreter>>) -> Result<()> {
+impl Acceptor<Result<()>, &MutInterpreter> for Stmt {
+    fn accept(&self, visitor: &MutInterpreter) -> Result<()> {
         match self {
             Stmt::Expression(expr) => {
                 let _ = expr.accept(visitor)?;
@@ -56,9 +55,7 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                     value = Some(initializer.accept(visitor)?);
                 };
 
-                let interpreter = visitor
-                    .lock()
-                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?;
+                let interpreter = visitor.borrow();
 
                 interpreter
                     .environment
@@ -68,9 +65,7 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 Ok(())
             }
             Stmt::Block(stmts) => {
-                let mut interpreter = visitor
-                    .lock()
-                    .map_err(|e| Error::MutexError(e.to_string()))?;
+                let mut interpreter = visitor.borrow_mut();
 
                 let env = Environment::new(Some(interpreter.environment.clone()));
                 interpreter.execute_block(stmts, Rc::new(RefCell::new(env)))
@@ -98,9 +93,7 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 Ok(())
             }
             Stmt::Function { name, params, body } => {
-                let interpreter = visitor
-                    .lock()
-                    .map_err(|e| Error::MutexError(e.to_string()))?;
+                let interpreter = visitor.borrow();
 
                 let value = Value::Callable(Callable::Function {
                     declaration: Box::new(Stmt::Function {
@@ -108,6 +101,7 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                         params: params.clone(),
                         body: body.clone(),
                     }),
+                    closure: interpreter.environment.clone(),
                 });
 
                 interpreter

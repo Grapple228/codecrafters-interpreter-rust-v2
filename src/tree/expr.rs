@@ -1,8 +1,6 @@
-use std::sync::{Arc, Mutex};
-
-use crate::interpreter::{self, Result};
-use crate::{value, TokenType, Value};
-use crate::{visitor::Acceptor, AstPrinter, Interpreter, Token};
+use crate::interpreter::Result;
+use crate::{value, MutInterpreter, TokenType, Value};
+use crate::{visitor::Acceptor, AstPrinter, Token};
 
 use super::Stmt;
 
@@ -60,8 +58,8 @@ impl Expr {
     }
 }
 
-impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
-    fn accept(&self, visitor: &Arc<Mutex<Interpreter>>) -> Result<Value> {
+impl Acceptor<Result<Value>, &MutInterpreter> for Expr {
+    fn accept(&self, visitor: &MutInterpreter) -> Result<Value> {
         match self {
             Expr::Binary {
                 left,
@@ -87,9 +85,7 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
                 Ok(value.calculate(None, operator.clone())?)
             }
             Expr::Variable(name) => {
-                let interpreter = visitor
-                    .lock()
-                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?;
+                let interpreter = visitor.borrow();
 
                 let value = interpreter.environment.borrow().get(name.clone())?;
 
@@ -98,9 +94,7 @@ impl Acceptor<Result<Value>, &Arc<Mutex<Interpreter>>> for Expr {
             Expr::Assign { name, value } => {
                 let value = value.accept(visitor)?;
 
-                let interpreter = visitor
-                    .lock()
-                    .map_err(|e| interpreter::Error::MutexError(e.to_string()))?;
+                let interpreter = visitor.borrow();
 
                 _ = interpreter
                     .environment

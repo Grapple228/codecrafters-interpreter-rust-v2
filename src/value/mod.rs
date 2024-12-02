@@ -1,12 +1,10 @@
 mod callable;
 mod error;
 
-use std::sync::{Arc, Mutex};
-
 pub use callable::{Callable, CallableFn};
 pub use error::{Error, Result};
 
-use crate::{extensions::StringExt, interpreter, Interpreter, Token, TokenType};
+use crate::{extensions::StringExt, interpreter, MutInterpreter, Token, TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -35,7 +33,7 @@ impl Value {
     pub fn call(
         &self,
         paren: Token,
-        interpreter: &Arc<Mutex<Interpreter>>,
+        interpreter: &MutInterpreter,
         args: &[Value],
     ) -> std::result::Result<Value, interpreter::Error> {
         match self {
