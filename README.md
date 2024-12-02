@@ -1,17 +1,16 @@
 # About
 
-Second attempt to solve the challenge
+Second attempt to solve the challenge  
 With fixed errors, better structure, error handling, tests for modules
 
-Done:
--- Variables of different types (Boolean, Number, String, Nil)
--- Builtin functions
--- User defined functions
--- While and for loops
+Done:  
+-- Variables of different types (Boolean, Number, String, Nil)  
+-- Builtin functions  
+-- User defined functions  
+-- While and for loops  
 -- If-else branching
 
 This challenge follows the book
-
 [Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom.
 
 In this challenge you'll build an interpreter for
