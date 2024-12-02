@@ -1,5 +1,7 @@
 # About
 
+Second attempt to solve the challenge
+
 This challenge follows the book
 
 [Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom.
