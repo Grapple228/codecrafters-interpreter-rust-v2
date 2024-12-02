@@ -27,6 +27,10 @@ pub enum Stmt {
         then_branch: Box<Stmt>,
         else_branch: Option<Box<Stmt>>,
     },
+    While {
+        condition: Box<Expr>,
+        body: Box<Stmt>,
+    },
 }
 
 impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
@@ -81,6 +85,13 @@ impl Acceptor<Result<()>, &Arc<Mutex<Interpreter>>> for Stmt {
                 } else {
                     Ok(())
                 }
+            }
+            Stmt::While { condition, body } => {
+                while condition.accept(visitor)?.is_truthy() {
+                    body.accept(visitor)?
+                }
+
+                Ok(())
             }
         }
     }
@@ -138,6 +149,17 @@ impl Acceptor<String, &AstPrinter> for Stmt {
                     result.push_str(&else_branch.accept(visitor));
                     result.push_str("}");
                 }
+
+                result
+            }
+            Stmt::While { condition, body } => {
+                let mut result = String::new();
+
+                result.push_str("while (");
+                result.push_str(&condition.accept(visitor));
+                result.push_str(") {");
+                result.push_str(&body.accept(visitor));
+                result.push_str("}");
 
                 result
             }
