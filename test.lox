@@ -1,3 +1,5 @@
+var count = 3;
+
 fun fib_rec(n) {
   if (n <= 1) return n;
   return fib_rec(n - 2) + fib_rec(n - 1);
@@ -19,9 +21,16 @@ fun fib_iter(n) {
 
 }
 
-
 fun main() {
-  for (var i = 1; i < 10; i = i + 1) {
+  count = count * 2;
+
+  if(count >= 5) {
+    print "" + count + " is more than 5.";
+  } else {
+    print "" + count + " is less than 5.";
+  }
+
+  for (var i = 1; i <= count; i = i + 1) {
     print "" + i + ": " + fib_rec(i);
     print "   " + fib_iter(i);
   }

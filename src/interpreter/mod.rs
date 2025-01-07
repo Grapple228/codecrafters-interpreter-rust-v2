@@ -13,7 +13,7 @@ mod error;
 pub use environment::{Environment, MutEnv};
 pub use error::{Error, Result};
 
-use tracing::{debug, info};
+use tracing::info;
 
 pub type MutInterpreter = Rc<RefCell<Interpreter>>;
 

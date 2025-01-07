@@ -1,8 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use tracing::debug;
-
 use crate::interpreter::{self, Environment};
 use crate::resolver::{self, FunctionType, MutResolver, Resolver};
 use crate::{visitor::Acceptor, AstPrinter, Token};

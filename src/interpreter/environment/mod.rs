@@ -3,8 +3,6 @@ mod error;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub use error::{Error, Result};
-use tracing::debug;
-use tracing_subscriber::field::debug;
 
 use crate::{Token, Value};
 
@@ -24,10 +22,12 @@ impl Environment {
         }
     }
 
-    pub fn assign_at(&mut self, distance: usize, name: &Token, value: Option<Value>) {
+    pub fn assign_at(&mut self, distance: usize, name: &Token, value: Option<Value>) -> Result<()> {
         if let Some(ancestor) = self.ancestor(distance) {
-            ancestor.borrow_mut().assign(name, value);
+            ancestor.borrow_mut().assign(name, value)?;
         }
+
+        Ok(())
     }
 
     pub fn get_at(&self, distance: usize, name: &Token) -> Result<Value> {
@@ -41,7 +41,7 @@ impl Environment {
     fn ancestor(&self, distance: usize) -> Option<Rc<RefCell<Environment>>> {
         let mut env = Rc::new(RefCell::new(self.clone()));
 
-        for _ in 0..distance.checked_sub(1).unwrap_or(0) {
+        for _ in 0..distance {
             if let Some(enclosing) = &env.clone().borrow().enclosing {
                 env = Rc::clone(enclosing);
             }

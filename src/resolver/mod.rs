@@ -3,9 +3,9 @@ mod error;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub use error::{Error, Result};
-use tracing::{debug, info};
+use tracing::info;
 
-use crate::{resolver, visitor::Acceptor, Expr, MutInterpreter, Stmt, Token, Value, Visitor};
+use crate::{visitor::Acceptor, MutInterpreter, Stmt, Token, Visitor};
 
 pub type MutResolver = Rc<RefCell<Resolver>>;
 
@@ -112,12 +112,16 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_local(&mut self, expr: &Expr, name: &Token) {
-        for i in (0..self.scopes.len()).rev() {
-            if self.scopes[i].contains_key(&name.lexeme) {
-                self.interpreter
-                    .borrow_mut()
-                    .resolve(name, self.scopes.len() - 1 - i);
+    pub fn resolve_local(&mut self, name: &Token) {
+        if self.scopes.is_empty() {
+            return;
+        }
+
+        for (i, scope) in self.scopes.iter().enumerate().rev() {
+            let depth = self.scopes.len().checked_sub(i + 2).unwrap_or(0);
+
+            if scope.contains_key(&name.lexeme) {
+                self.interpreter.borrow_mut().resolve(name, depth);
                 return;
             }
         }

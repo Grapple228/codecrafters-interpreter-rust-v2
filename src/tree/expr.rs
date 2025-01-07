@@ -1,6 +1,3 @@
-use tracing::debug;
-use tracing_subscriber::field::debug;
-
 use crate::resolver::MutResolver;
 use crate::{interpreter, resolver, value, MutInterpreter, TokenType, Value};
 use crate::{visitor::Acceptor, AstPrinter, Token};
@@ -84,21 +81,17 @@ impl Acceptor<resolver::Result<()>, &MutResolver> for Expr {
                     }
                 }
 
-                visitor.borrow_mut().resolve_local(self, token);
+                visitor.borrow_mut().resolve_local(token);
 
                 Ok(())
             }
             Expr::Assign { name, value } => {
                 value.accept(visitor)?;
-                visitor.borrow_mut().resolve_local(value, name);
+                visitor.borrow_mut().resolve_local(name);
 
                 Ok(())
             }
-            Expr::Binary {
-                left,
-                operator,
-                right,
-            } => {
+            Expr::Binary { left, right, .. } => {
                 left.accept(visitor)?;
                 right.accept(visitor)?;
 
@@ -108,26 +101,20 @@ impl Acceptor<resolver::Result<()>, &MutResolver> for Expr {
                 expr.accept(visitor)?;
                 Ok(())
             }
-            Expr::Literal(value) => Ok(()),
-            Expr::Unary { operator, right } => {
+            Expr::Literal(_) => Ok(()),
+            Expr::Unary { right, .. } => {
                 right.accept(visitor)?;
 
                 Ok(())
             }
-            Expr::Logical {
-                left,
-                operator,
-                right,
-            } => {
+            Expr::Logical { left, right, .. } => {
                 left.accept(visitor)?;
                 right.accept(visitor)?;
 
                 Ok(())
             }
             Expr::Call {
-                callee,
-                paren,
-                arguments,
+                callee, arguments, ..
             } => {
                 callee.accept(visitor)?;
 
@@ -182,12 +169,12 @@ impl Acceptor<interpreter::Result<Value>, &MutInterpreter> for Expr {
                         distance,
                         name,
                         Some(value.clone()),
-                    );
+                    )?;
                 } else {
                     interpreter
                         .globals
                         .borrow_mut()
-                        .assign(&name, Some(value.clone()));
+                        .assign(&name, Some(value.clone()))?;
                 }
 
                 Ok(value)
