@@ -1,4 +1,5 @@
 use tracing::debug;
+use tracing_subscriber::field::debug;
 
 use crate::resolver::MutResolver;
 use crate::{interpreter, resolver, value, MutInterpreter, TokenType, Value};
@@ -74,8 +75,8 @@ impl Acceptor<resolver::Result<()>, &MutResolver> for Expr {
         match self {
             Expr::Variable(token) => {
                 if let Some(scope) = visitor.borrow().scopes.last() {
-                    if let Some(value) = scope.get(&token.lexeme) {
-                        if *value == false {
+                    if let Some(value) = scope.get(&token.lexeme).cloned() {
+                        if value == false {
                             return Err(resolver::Error::LocalVarReadWhileInitialized(
                                 token.clone(),
                             ));
@@ -169,10 +170,7 @@ impl Acceptor<interpreter::Result<Value>, &MutInterpreter> for Expr {
             Expr::Variable(name) => {
                 let interpreter = visitor.borrow();
 
-                interpreter.look_up_variable(name)
-
-                // let value = interpreter.environment.borrow().get(name)?;
-                // Ok(value)
+                Ok(interpreter.look_up_variable(name)?)
             }
             Expr::Assign { name, value } => {
                 let value = value.accept(visitor)?;
@@ -191,11 +189,6 @@ impl Acceptor<interpreter::Result<Value>, &MutInterpreter> for Expr {
                         .borrow_mut()
                         .assign(&name, Some(value.clone()));
                 }
-
-                // _ = interpreter
-                //     .environment
-                //     .borrow_mut()
-                //     .assign(&name, Some(value.clone()));
 
                 Ok(value)
             }

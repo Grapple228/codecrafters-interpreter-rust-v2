@@ -13,7 +13,7 @@ mod error;
 pub use environment::{Environment, MutEnv};
 pub use error::{Error, Result};
 
-use tracing::info;
+use tracing::{debug, info};
 
 pub type MutInterpreter = Rc<RefCell<Interpreter>>;
 
@@ -78,10 +78,8 @@ impl Interpreter {
         Ok(value)
     }
 
-    pub fn resolve(&mut self, expr: &Expr, depth: usize) {
-        if let Some(name) = expr.name() {
-            self.locals.insert(name, depth);
-        }
+    pub fn resolve(&mut self, name: &Token, depth: usize) {
+        self.locals.insert(name.lexeme.clone(), depth);
     }
 
     fn define_natives(&mut self) {

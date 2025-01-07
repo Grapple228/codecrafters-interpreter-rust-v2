@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, hash::Hash};
 
 use crate::Value;
 
@@ -60,6 +60,15 @@ pub struct Token {
     pub lexeme: String,
     pub literal: Option<Value>,
     pub line: usize,
+}
+
+impl Eq for Token {}
+
+impl Hash for Token {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.token_type.hash(state);
+        self.lexeme.hash(state);
+    }
 }
 
 impl Token {

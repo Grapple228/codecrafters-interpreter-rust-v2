@@ -113,11 +113,11 @@ impl Resolver {
     }
 
     pub fn resolve_local(&mut self, expr: &Expr, name: &Token) {
-        for (i, scope) in self.scopes.iter().rev().enumerate() {
-            if scope.contains_key(&name.lexeme) {
+        for i in (0..self.scopes.len()).rev() {
+            if self.scopes[i].contains_key(&name.lexeme) {
                 self.interpreter
                     .borrow_mut()
-                    .resolve(expr, self.scopes.len() - 1 - i);
+                    .resolve(name, self.scopes.len() - 1 - i);
                 return;
             }
         }

@@ -4,6 +4,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub use error::{Error, Result};
 use tracing::debug;
+use tracing_subscriber::field::debug;
 
 use crate::{Token, Value};
 
@@ -25,10 +26,7 @@ impl Environment {
 
     pub fn assign_at(&mut self, distance: usize, name: &Token, value: Option<Value>) {
         if let Some(ancestor) = self.ancestor(distance) {
-            ancestor
-                .borrow_mut()
-                .values
-                .insert(name.lexeme.clone(), value);
+            ancestor.borrow_mut().assign(name, value);
         }
     }
 
@@ -43,11 +41,9 @@ impl Environment {
     fn ancestor(&self, distance: usize) -> Option<Rc<RefCell<Environment>>> {
         let mut env = Rc::new(RefCell::new(self.clone()));
 
-        for _ in 0..distance {
+        for _ in 0..distance.checked_sub(1).unwrap_or(0) {
             if let Some(enclosing) = &env.clone().borrow().enclosing {
-                env = enclosing.clone();
-            } else {
-                return None;
+                env = Rc::clone(enclosing);
             }
         }
 
