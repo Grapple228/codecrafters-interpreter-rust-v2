@@ -106,7 +106,9 @@ impl Value {
                 (Value::String(a), Some(Value::String(b))) => {
                     Ok(Value::String(format!("{}{}", a, b)))
                 }
-                // (Value::String(a), None) => Ok(Value::String(a.clone())),
+                (Value::String(a), Some(Value::Number(b))) => {
+                    Ok(Value::String(format!("{}{}", a, b)))
+                }
                 _ => Err(Error::InvalidType {
                     token,
                     message: String::from("Operation must be done with numbers or strings."),
