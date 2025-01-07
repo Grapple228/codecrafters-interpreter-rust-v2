@@ -12,6 +12,7 @@ mod extensions;
 mod interpreter;
 mod parser;
 mod printer;
+mod resolver;
 mod scanner;
 mod token;
 mod tree;
@@ -24,6 +25,7 @@ pub use error::{Error, Result};
 pub use interpreter::{Interpreter, MutInterpreter};
 pub use parser::Parser;
 pub use printer::AstPrinter;
+pub use resolver::Resolver;
 pub use scanner::Scanner;
 pub use token::{Token, TokenType};
 pub use tree::{Expr, Stmt};
@@ -32,7 +34,7 @@ pub use visitor::Visitor;
 
 // endregion: --- Modules
 
-pub struct W<T>(T);
+pub struct W<T>(pub T);
 
 pub fn report(line: usize, message: impl Into<String>) {
     eprintln!("[line {}] Error: {}", line, message.into());

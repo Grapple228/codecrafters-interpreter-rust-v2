@@ -1,11 +1,13 @@
 #![allow(unused)] // For beginning only.
 
-use std::{io::stderr, process};
+use std::{cell::RefCell, io::stderr, process, rc::Rc};
 
 type Error = Box<dyn std::error::Error>;
 type Result<T> = core::result::Result<T, Error>; // For tests.
 
-use interpreter::{AstPrinter, Expr, Interpreter, Parser, Scanner, Token, TokenType, Value};
+use interpreter::{
+    AstPrinter, Expr, Interpreter, Parser, Resolver, Scanner, Token, TokenType, Value,
+};
 use tracing::debug;
 
 fn main() -> Result<()> {
@@ -43,7 +45,7 @@ fn main() -> Result<()> {
         stmts
             .iter()
             .flat_map(|s| printer
-                .print(s.clone())
+                .print(s)
                 .split('\n')
                 .map(|s| s.to_string())
                 .filter(|s| !s.is_empty())
@@ -51,10 +53,16 @@ fn main() -> Result<()> {
             .collect::<Vec<_>>()
     );
 
-    let mut interpreter = Interpreter::default();
-    let result = interpreter.interpret_stmt(&stmts);
+    let mut interpreter = Rc::new(RefCell::from(Interpreter::default()));
 
-    if interpreter.had_runtime_error() {
+    let mut resolver = Resolver::new(&interpreter);
+    if resolver.resolve(&stmts)? {
+        process::exit(65)
+    }
+
+    let result = interpreter.borrow_mut().interpret_stmt(&stmts);
+
+    if interpreter.borrow().had_runtime_error() {
         process::exit(70)
     }
 

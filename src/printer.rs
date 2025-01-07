@@ -4,7 +4,7 @@ use crate::visitor::{Acceptor, Visitor};
 pub struct AstPrinter;
 
 impl AstPrinter {
-    pub fn print<A>(&self, acceptor: A) -> String
+    pub fn print<A>(&self, acceptor: &A) -> String
     where
         A: for<'a> Acceptor<String, &'a AstPrinter>,
     {
@@ -36,7 +36,7 @@ mod tests {
 
         // -- Exec
         let printer = AstPrinter::default();
-        let result = printer.print(expr);
+        let result = printer.print(&expr);
 
         // -- Check
         assert_eq!(result, "123.0");
@@ -60,7 +60,7 @@ mod tests {
 
         // -- Exec
         let printer = AstPrinter::default();
-        let result = printer.print(expr);
+        let result = printer.print(&expr);
 
         // -- Check
         assert_eq!(result, "(* (- 123.0) (group 45.67))");

@@ -1,4 +1,3 @@
-
 pub trait Visitor<T> {
     fn visit(&self, acceptor: impl Acceptor<T, Self>) -> T
     where

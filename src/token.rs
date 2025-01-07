@@ -1,10 +1,9 @@
 use std::fmt::Debug;
 
-
 use crate::Value;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenType {
     // Single-character tokens.
     LEFT_PAREN,
@@ -88,9 +87,15 @@ impl Token {
     }
 }
 
+impl From<&Token> for Token {
+    fn from(token: &Token) -> Self {
+        token.clone()
+    }
+}
+
 impl core::fmt::Display for Token {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-        let literal = if let Some(literal) = self.literal.clone() {
+        let literal = if let Some(literal) = &self.literal {
             literal.to_string()
         } else {
             String::from("null")

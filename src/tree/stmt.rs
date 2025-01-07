@@ -1,7 +1,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::interpreter::{Environment, Error, Result};
+use tracing::debug;
+
+use crate::interpreter::{self, Environment};
+use crate::resolver::{self, FunctionType, MutResolver, Resolver};
 use crate::{visitor::Acceptor, AstPrinter, Token};
 use crate::{Callable, MutInterpreter, Value};
 
@@ -36,8 +39,98 @@ pub enum Stmt {
     },
 }
 
-impl Acceptor<Result<()>, &MutInterpreter> for Stmt {
-    fn accept(&self, visitor: &MutInterpreter) -> Result<()> {
+impl Acceptor<resolver::Result<()>, &MutResolver> for Stmt {
+    fn accept(&self, visitor: &MutResolver) -> resolver::Result<()> {
+        match self {
+            Stmt::Block(stmts) => {
+                visitor.borrow_mut().begin_scope();
+
+                Resolver::resolve_block(visitor, &stmts)?;
+
+                visitor.borrow_mut().end_scope();
+
+                Ok(())
+            }
+            Stmt::Var { name, initializer } => {
+                visitor.borrow_mut().declare(&name)?;
+
+                if let Some(initializer) = initializer {
+                    initializer.accept(visitor)?;
+                }
+
+                visitor.borrow_mut().define(&name);
+
+                Ok(())
+            }
+            Stmt::Function { name, params, body } => {
+                visitor.borrow_mut().declare(&name)?;
+                visitor.borrow_mut().define(&name);
+
+                let enclosing_function = visitor
+                    .borrow_mut()
+                    .replace_function(resolver::FunctionType::Function);
+
+                visitor.borrow_mut().begin_scope();
+
+                for param in params {
+                    visitor.borrow_mut().declare(&param)?;
+                    visitor.borrow_mut().define(&param);
+                }
+
+                Resolver::resolve_block(visitor, &body)?;
+
+                visitor.borrow_mut().end_scope();
+
+                _ = visitor.borrow_mut().replace_function(enclosing_function);
+
+                Ok(())
+            }
+            Stmt::Expression(expr) => {
+                expr.accept(visitor)?;
+                Ok(())
+            }
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                condition.accept(visitor)?;
+                then_branch.accept(visitor)?;
+
+                if let Some(else_branch) = else_branch {
+                    else_branch.accept(visitor)?;
+                }
+
+                Ok(())
+            }
+            Stmt::Print(expr) => {
+                expr.accept(visitor)?;
+                Ok(())
+            }
+
+            Stmt::Return { keyword, value } => {
+                if visitor.borrow().current_function() == FunctionType::None {
+                    return Err(resolver::Error::TopLevelReturn(keyword.clone()));
+                }
+
+                if let Some(value) = value {
+                    value.accept(visitor)?;
+                }
+
+                Ok(())
+            }
+            Stmt::While { condition, body } => {
+                condition.accept(visitor)?;
+                body.accept(visitor)?;
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Acceptor<interpreter::Result<()>, &MutInterpreter> for Stmt {
+    fn accept(&self, visitor: &MutInterpreter) -> interpreter::Result<()> {
         match self {
             Stmt::Expression(expr) => {
                 let _ = expr.accept(visitor)?;
@@ -60,7 +153,7 @@ impl Acceptor<Result<()>, &MutInterpreter> for Stmt {
                 interpreter
                     .environment
                     .borrow_mut()
-                    .define(name.lexeme.clone(), value.clone());
+                    .define(&name.lexeme, value);
 
                 Ok(())
             }
@@ -107,7 +200,7 @@ impl Acceptor<Result<()>, &MutInterpreter> for Stmt {
                 interpreter
                     .environment
                     .borrow_mut()
-                    .define(name.lexeme.clone(), Some(value));
+                    .define(&name.lexeme, Some(value));
 
                 Ok(())
             }
@@ -118,7 +211,7 @@ impl Acceptor<Result<()>, &MutInterpreter> for Stmt {
                     result = value.accept(visitor)?;
                 }
 
-                Err(Error::Return(result))?
+                Err(interpreter::Error::Return(result))?
             }
         }
     }

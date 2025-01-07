@@ -46,7 +46,7 @@ impl Callable {
                 let result = match declaration.as_ref() {
                     Stmt::Function { params, body, .. } => {
                         for (i, arg) in args.iter().enumerate() {
-                            env.define(params.get(i).unwrap().lexeme.clone(), Some(arg.to_owned()));
+                            env.define(&params.get(i).unwrap().lexeme, Some(arg.to_owned()));
                         }
 
                         match interpreter.execute_block(body, Rc::new(RefCell::new(env))) {

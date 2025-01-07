@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     value::{self, CallableFn},
@@ -22,11 +22,15 @@ pub struct Interpreter {
     had_runtime_error: bool,
     pub environment: MutEnv,
     pub globals: MutEnv,
+    pub locals: HashMap<String, usize>,
 }
 
 impl Visitor<Result<Value>> for &MutInterpreter {
-    fn visit(&self, acceptor: impl Acceptor<Result<Value>, Self>) -> Result<Value> {
-        acceptor.accept(&self)
+    fn visit(&self, acceptor: impl Acceptor<Result<Value>, Self>) -> Result<Value>
+    where
+        Self: Sized,
+    {
+        acceptor.accept(self)
     }
 }
 
@@ -43,7 +47,7 @@ impl Visitor<Result<()>> for &MutInterpreter {
 
 impl From<W<Interpreter>> for MutInterpreter {
     fn from(value: W<Interpreter>) -> Self {
-        Rc::new(RefCell::new(value.0))
+        Rc::new(RefCell::from(value.0))
     }
 }
 
@@ -64,6 +68,22 @@ impl Interpreter {
         interpreter
     }
 
+    pub fn look_up_variable(&self, name: &Token) -> Result<Value> {
+        let value = if let Some(distance) = self.locals.get(&name.lexeme).cloned() {
+            self.environment.borrow().get_at(distance, &name)?
+        } else {
+            self.globals.borrow().get(&name)?
+        };
+
+        Ok(value)
+    }
+
+    pub fn resolve(&mut self, expr: &Expr, depth: usize) {
+        if let Some(name) = expr.name() {
+            self.locals.insert(name, depth);
+        }
+    }
+
     fn define_natives(&mut self) {
         self.define_native("clock", 0, builtins::clock);
         self.define_native("sum", 2, builtins::sum);
@@ -74,11 +94,11 @@ impl Interpreter {
 
         let value = Value::Callable(Callable::BuiltIn {
             arity,
-            name: Box::new(Token::new(TokenType::IDENTIFIER, name.clone(), None, 0)),
+            name: Box::new(Token::new(TokenType::IDENTIFIER, &name, None, 0)),
             function: func,
         });
 
-        self.globals.borrow_mut().define(name, Some(value));
+        self.globals.borrow_mut().define(&name, Some(value));
     }
 
     pub fn execute_block(&mut self, stmts: &[Stmt], env: MutEnv) -> Result<()> {
@@ -102,7 +122,7 @@ impl Interpreter {
     }
 
     fn execute(&self, stmt: impl Into<Stmt>) -> Result<()> {
-        let stmt = stmt.into();
+        let stmt: Stmt = stmt.into();
 
         stmt.accept(&W(self.clone()).into())
     }
@@ -179,6 +199,13 @@ impl Interpreter {
                 environment::Error::UndefinedVariable(name) => {
                     crate::report(name.line, format!("Undefined variable '{}'.", name.lexeme))
                 }
+                environment::Error::AncestorNotFound(depth, name) => crate::report(
+                    name.line,
+                    format!(
+                        "Ancestor with {} not found at depth {}.",
+                        name.lexeme, depth
+                    ),
+                ),
             },
             Error::MutexError(message) => unreachable!("{}", message),
             Error::Return(_) => unreachable!(),

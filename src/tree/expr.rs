@@ -1,5 +1,7 @@
-use crate::interpreter::Result;
-use crate::{value, MutInterpreter, TokenType, Value};
+use tracing::debug;
+
+use crate::resolver::MutResolver;
+use crate::{interpreter, resolver, value, MutInterpreter, TokenType, Value};
 use crate::{visitor::Acceptor, AstPrinter, Token};
 
 use super::Stmt;
@@ -41,6 +43,15 @@ impl Into<Stmt> for Expr {
 }
 
 impl Expr {
+    pub fn name(&self) -> Option<String> {
+        match self {
+            Expr::Variable(token) => Some(token.lexeme.clone()),
+            Expr::Assign { name, .. } => Some(name.lexeme.clone()),
+            Expr::Binary { left, .. } => left.name(),
+            Expr::Call { callee, .. } => callee.name(),
+            _ => None,
+        }
+    }
     fn parenthesize(visitor: &AstPrinter, name: impl Into<String>, exprs: &[&Box<Expr>]) -> String {
         let mut result = String::new();
 
@@ -58,23 +69,94 @@ impl Expr {
     }
 }
 
-impl Acceptor<Result<Value>, &MutInterpreter> for Expr {
-    fn accept(&self, visitor: &MutInterpreter) -> Result<Value> {
+impl Acceptor<resolver::Result<()>, &MutResolver> for Expr {
+    fn accept(&self, visitor: &MutResolver) -> resolver::Result<()> {
+        match self {
+            Expr::Variable(token) => {
+                if let Some(scope) = visitor.borrow().scopes.last() {
+                    if let Some(value) = scope.get(&token.lexeme) {
+                        if *value == false {
+                            return Err(resolver::Error::LocalVarReadWhileInitialized(
+                                token.clone(),
+                            ));
+                        }
+                    }
+                }
+
+                visitor.borrow_mut().resolve_local(self, token);
+
+                Ok(())
+            }
+            Expr::Assign { name, value } => {
+                value.accept(visitor)?;
+                visitor.borrow_mut().resolve_local(value, name);
+
+                Ok(())
+            }
+            Expr::Binary {
+                left,
+                operator,
+                right,
+            } => {
+                left.accept(visitor)?;
+                right.accept(visitor)?;
+
+                Ok(())
+            }
+            Expr::Grouping(expr) => {
+                expr.accept(visitor)?;
+                Ok(())
+            }
+            Expr::Literal(value) => Ok(()),
+            Expr::Unary { operator, right } => {
+                right.accept(visitor)?;
+
+                Ok(())
+            }
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => {
+                left.accept(visitor)?;
+                right.accept(visitor)?;
+
+                Ok(())
+            }
+            Expr::Call {
+                callee,
+                paren,
+                arguments,
+            } => {
+                callee.accept(visitor)?;
+
+                for argument in arguments {
+                    argument.accept(visitor)?;
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Acceptor<interpreter::Result<Value>, &MutInterpreter> for Expr {
+    fn accept(&self, visitor: &MutInterpreter) -> interpreter::Result<Value> {
         match self {
             Expr::Binary {
                 left,
                 operator,
                 right,
             } => {
-                let left = left.accept(&visitor.clone())?;
+                let left = left.accept(visitor)?;
                 let right = right.accept(visitor)?;
 
-                Ok(left.calculate(Some(&right), operator.clone())?)
+                Ok(left.calculate(Some(&right), operator)?)
             }
             Expr::Grouping(expr) => expr.accept(visitor),
             Expr::Literal(value) => {
-                if let Some(value) = value.clone() {
-                    Ok(value)
+                if let Some(value) = value {
+                    Ok(value.to_owned())
                 } else {
                     Ok(Value::Nil)
                 }
@@ -82,24 +164,38 @@ impl Acceptor<Result<Value>, &MutInterpreter> for Expr {
             Expr::Unary { operator, right } => {
                 let value = right.accept(visitor)?;
 
-                Ok(value.calculate(None, operator.clone())?)
+                Ok(value.calculate(None, operator)?)
             }
             Expr::Variable(name) => {
                 let interpreter = visitor.borrow();
 
-                let value = interpreter.environment.borrow().get(name.clone())?;
+                interpreter.look_up_variable(name)
 
-                Ok(value)
+                // let value = interpreter.environment.borrow().get(name)?;
+                // Ok(value)
             }
             Expr::Assign { name, value } => {
                 let value = value.accept(visitor)?;
 
                 let interpreter = visitor.borrow();
 
-                _ = interpreter
-                    .environment
-                    .borrow_mut()
-                    .assign(name.clone(), Some(value.clone()));
+                if let Some(distance) = interpreter.locals.get(&name.lexeme).copied() {
+                    interpreter.environment.borrow_mut().assign_at(
+                        distance,
+                        name,
+                        Some(value.clone()),
+                    );
+                } else {
+                    interpreter
+                        .globals
+                        .borrow_mut()
+                        .assign(&name, Some(value.clone()));
+                }
+
+                // _ = interpreter
+                //     .environment
+                //     .borrow_mut()
+                //     .assign(&name, Some(value.clone()));
 
                 Ok(value)
             }
@@ -132,7 +228,7 @@ impl Acceptor<Result<Value>, &MutInterpreter> for Expr {
                 let arguments = arguments
                     .iter()
                     .map(|arg| arg.accept(visitor))
-                    .collect::<Result<Vec<Value>>>()?;
+                    .collect::<interpreter::Result<Vec<Value>>>()?;
 
                 if !callee.is_callable() {
                     return Err(value::Error::NotCallable {
@@ -149,7 +245,7 @@ impl Acceptor<Result<Value>, &MutInterpreter> for Expr {
                     })?;
                 }
 
-                Ok(callee.call(paren.clone(), visitor, &arguments)?)
+                Ok(callee.call(paren, visitor, &arguments)?)
             }
         }
     }
@@ -162,7 +258,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 left,
                 operator,
                 right,
-            } => Self::parenthesize(&visitor, operator.lexeme.clone(), &[left, right]),
+            } => Self::parenthesize(&visitor, &operator.lexeme, &[left, right]),
             Expr::Grouping(expr) => Self::parenthesize(&visitor, "group", &[expr]),
             Expr::Literal(value) => match value {
                 None => panic!("Must not be None"),
@@ -173,7 +269,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 Some(Value::Callable(c)) => c.stringify(),
             },
             Expr::Unary { operator, right } => {
-                Self::parenthesize(&visitor, operator.lexeme.clone(), &[right])
+                Self::parenthesize(&visitor, &operator.lexeme, &[right])
             }
             Expr::Variable(name) => format!("{}", name.lexeme),
             Expr::Assign { name, value } => {
@@ -183,7 +279,7 @@ impl Acceptor<String, &AstPrinter> for Expr {
                 left,
                 operator,
                 right,
-            } => Self::parenthesize(&visitor, operator.lexeme.clone(), &[left, right]),
+            } => Self::parenthesize(&visitor, &operator.lexeme, &[left, right]),
             Expr::Call {
                 callee, arguments, ..
             } => {

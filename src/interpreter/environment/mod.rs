@@ -3,6 +3,7 @@ mod error;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub use error::{Error, Result};
+use tracing::debug;
 
 use crate::{Token, Value};
 
@@ -22,7 +23,38 @@ impl Environment {
         }
     }
 
-    pub fn get(&self, name: Token) -> Result<Value> {
+    pub fn assign_at(&mut self, distance: usize, name: &Token, value: Option<Value>) {
+        if let Some(ancestor) = self.ancestor(distance) {
+            ancestor
+                .borrow_mut()
+                .values
+                .insert(name.lexeme.clone(), value);
+        }
+    }
+
+    pub fn get_at(&self, distance: usize, name: &Token) -> Result<Value> {
+        if let Some(ancestor) = self.ancestor(distance) {
+            ancestor.borrow().get(&name)
+        } else {
+            Err(Error::AncestorNotFound(distance, name.clone()))
+        }
+    }
+
+    fn ancestor(&self, distance: usize) -> Option<Rc<RefCell<Environment>>> {
+        let mut env = Rc::new(RefCell::new(self.clone()));
+
+        for _ in 0..distance {
+            if let Some(enclosing) = &env.clone().borrow().enclosing {
+                env = enclosing.clone();
+            } else {
+                return None;
+            }
+        }
+
+        Some(env)
+    }
+
+    pub fn get(&self, name: &Token) -> Result<Value> {
         if let Some(value) = self.values.get(&name.lexeme) {
             return if let Some(value) = value {
                 Ok(value.clone())
@@ -35,26 +67,26 @@ impl Environment {
             return enclosing.borrow().get(name);
         }
 
-        Err(Error::UndefinedVariable(name))
+        Err(Error::UndefinedVariable(name.to_owned()))
     }
 
-    pub fn define(&mut self, name: impl Into<String>, value: Option<Value>) {
-        self.values.insert(name.into(), value);
+    pub fn define(&mut self, name: &str, value: Option<Value>) {
+        self.values.insert(name.to_string(), value);
     }
 
-    pub fn assign(&mut self, name: Token, value: Option<Value>) -> Result<()> {
+    pub fn assign(&mut self, name: &Token, value: Option<Value>) -> Result<()> {
         if let Some(existing) = self.values.get_mut(&name.lexeme) {
-            *existing = value.clone();
+            *existing = value;
 
             return Ok(());
         }
 
         if let Some(enclosing) = &mut self.enclosing {
-            enclosing.borrow_mut().assign(name, value.clone())?;
+            enclosing.borrow_mut().assign(name, value)?;
             return Ok(());
         }
 
-        Err(Error::UndefinedVariable(name))
+        Err(Error::UndefinedVariable(name.clone()))
     }
 }
 
@@ -74,7 +106,7 @@ mod tests {
 
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
 
-        assert_eq!(env.get(token.clone()), Err(Error::UndefinedVariable(token)));
+        assert_eq!(env.get(&token), Err(Error::UndefinedVariable(token)));
 
         Ok(())
     }
@@ -85,9 +117,9 @@ mod tests {
 
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
 
-        env.define(token.lexeme.clone(), None);
+        env.define(&token.lexeme, None);
 
-        assert_eq!(env.get(token.clone()), Ok(Value::Nil));
+        assert_eq!(env.get(&token), Ok(Value::Nil));
 
         Ok(())
     }
@@ -99,9 +131,9 @@ mod tests {
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
         let value = Value::Number(5.5);
 
-        env.define(token.lexeme.clone(), Some(value.clone()));
+        env.define(&token.lexeme, Some(value.clone()));
 
-        assert_eq!(env.get(token.clone()), Ok(value));
+        assert_eq!(env.get(&token), Ok(value));
 
         Ok(())
     }
@@ -113,13 +145,13 @@ mod tests {
         let token = Token::new(TokenType::IDENTIFIER, "a", None, 1);
         let value = Value::Number(5.5);
 
-        env.define(token.lexeme.clone(), Some(value.clone()));
+        env.define(&token.lexeme, Some(value.clone()));
 
-        assert_eq!(env.get(token.clone()), Ok(value));
+        assert_eq!(env.get(&token), Ok(value));
 
-        env.define(token.lexeme.clone(), Some(Value::Number(6.6)));
+        env.define(&token.lexeme, Some(Value::Number(6.6)));
 
-        assert_eq!(env.get(token.clone()), Ok(Value::Number(6.6)));
+        assert_eq!(env.get(&token), Ok(Value::Number(6.6)));
 
         Ok(())
     }

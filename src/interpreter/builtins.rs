@@ -15,12 +15,10 @@ pub fn clock(_interpreter: &MutInterpreter, _args: &[Value]) -> Result<Value> {
 }
 
 pub fn sum(_interpreter: &MutInterpreter, args: &[Value]) -> Result<Value> {
-    let a = args[0].clone();
-    let b = args[1].clone();
+    let a = &args[0];
+    let b = &args[1];
 
     let res = a.calculate(Some(&b), Token::new(TokenType::PLUS, "+", None, 1));
-
-    println!("Sum: {:#?} + {:#?} = {:#?}", a, b, res);
 
     Ok(res?)
 }

@@ -73,7 +73,7 @@ fn parse(filename: &str) -> Result<()> {
     match expr {
         Ok(expr) => {
             let printer = AstPrinter::default();
-            let result = printer.print(expr);
+            let result = printer.print(&expr);
 
             println!("{}", result);
         }

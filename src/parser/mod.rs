@@ -287,7 +287,7 @@ impl Parser {
 
             if let Expr::Variable(name) = expr.clone()? {
                 return Ok(Expr::Assign {
-                    name,
+                    name: name.clone(),
                     value: Box::new(value?),
                 });
             }
@@ -475,7 +475,7 @@ impl Parser {
         }
 
         if self.matches(&[TokenType::IDENTIFIER]) {
-            return Ok(Expr::Variable(self.previous().clone()));
+            return Ok(Expr::Variable(self.previous()));
         }
 
         if self.matches(&[TokenType::LEFT_PAREN]) {
@@ -492,7 +492,7 @@ impl Parser {
     // region:    --- Helpers
 
     fn consume(&mut self, token_type: TokenType, message: impl Into<String>) -> Result<Token> {
-        if self.check(token_type.clone()) {
+        if self.check(token_type) {
             return Ok(self.advance());
         }
 

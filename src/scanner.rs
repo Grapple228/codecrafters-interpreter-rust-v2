@@ -274,8 +274,8 @@ impl Scanner {
         Ok(())
     }
 
-    pub fn tokens(&self) -> Vec<Token> {
-        self.tokens.clone()
+    pub fn tokens(&self) -> &[Token] {
+        &self.tokens
     }
 }
 

@@ -32,7 +32,7 @@ impl Value {
 
     pub fn call(
         &self,
-        paren: Token,
+        paren: &Token,
         interpreter: &MutInterpreter,
         args: &[Value],
     ) -> std::result::Result<Value, interpreter::Error> {
@@ -83,17 +83,17 @@ impl Value {
 
     /// `other` is optional. Needed only for uperations that can be done with one operand
     /// like `!` or `-`
-    pub fn calculate(&self, other: Option<&Value>, token: Token) -> Result<Self> {
-        let operator = token.clone().token_type;
+    pub fn calculate(&self, other: Option<&Value>, token: impl Into<Token>) -> Result<Self> {
+        let token: Token = token.into();
         // TODO: Check error messages
 
-        match operator {
+        match token.token_type {
             // -- Basic calculations
             TokenType::MINUS => match (self, other) {
                 (Value::Number(a), Some(Value::Number(b))) => Ok(Value::Number(a - b)),
                 (Value::Number(a), None) => Ok(Value::Number(-a)),
                 (_, None) => Err(Error::MustBeNumber {
-                    token: token.clone(),
+                    token,
                     message: String::from("Operand must be a number."),
                 }),
                 _ => Err(Error::InvalidType {
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_value_operation_negation_ok() -> Result<()> {
-        let negate = |left: Value, right: Option<&Value>| {
+        let negate = |left: &Value, right: Option<&Value>| {
             let token = create_token(TokenType::MINUS);
             left.calculate(right, token)
         };
@@ -295,11 +295,11 @@ mod tests {
         let nil = Value::Nil;
 
         // Correctly negates value
-        assert!(negate(b_true.clone(), None).is_err());
-        assert!(negate(b_false.clone(), None).is_err());
-        assert_eq!(negate(a_nubmer.clone(), None)?, Value::Number(-6.0));
-        assert!(negate(a_string.clone(), None).is_err());
-        assert!(negate(nil.clone(), None).is_err());
+        assert!(negate(&b_true, None).is_err());
+        assert!(negate(&b_false, None).is_err());
+        assert_eq!(negate(&a_nubmer, None)?, Value::Number(-6.0));
+        assert!(negate(&a_string, None).is_err());
+        assert!(negate(&nil, None).is_err());
 
         Ok(())
     }
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn test_value_operation_bang_ok() -> Result<()> {
-        let bang = |left: Value, right: Option<&Value>| {
+        let bang = |left: &Value, right: Option<&Value>| {
             let token: Token = Token::new(TokenType::BANG, "!", None, 1);
             left.calculate(right, token)
         };
@@ -548,18 +548,18 @@ mod tests {
         let nil = Value::Nil;
 
         // Correctly bang value
-        assert_eq!(bang(b_true.clone(), None)?, Value::Boolean(false));
-        assert_eq!(bang(b_false.clone(), None)?, Value::Boolean(true));
-        assert_eq!(bang(a_nubmer.clone(), None)?, Value::Boolean(false));
-        assert_eq!(bang(a_string.clone(), None)?, Value::Boolean(false));
-        assert_eq!(bang(nil.clone(), None)?, Value::Boolean(true));
+        assert_eq!(bang(&b_true, None)?, Value::Boolean(false));
+        assert_eq!(bang(&b_false, None)?, Value::Boolean(true));
+        assert_eq!(bang(&a_nubmer, None)?, Value::Boolean(false));
+        assert_eq!(bang(&a_string, None)?, Value::Boolean(false));
+        assert_eq!(bang(&nil, None)?, Value::Boolean(true));
 
         // Must take only one operand
-        assert!(bang(b_true.clone(), Some(&b_true)).is_err());
-        assert!(bang(b_true.clone(), Some(&b_false)).is_err());
-        assert!(bang(b_true.clone(), Some(&a_nubmer)).is_err());
-        assert!(bang(b_true.clone(), Some(&a_string)).is_err());
-        assert!(bang(b_true.clone(), Some(&nil)).is_err());
+        assert!(bang(&b_true, Some(&b_true)).is_err());
+        assert!(bang(&b_true, Some(&b_false)).is_err());
+        assert!(bang(&b_true, Some(&a_nubmer)).is_err());
+        assert!(bang(&b_true, Some(&a_string)).is_err());
+        assert!(bang(&b_true, Some(&nil)).is_err());
 
         Ok(())
     }

@@ -2,10 +2,11 @@ use crate::Token;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub enum Error {
-    UndefinedVariable(Token),
-    AncestorNotFound(usize, Token),
+    LocalVarReadWhileInitialized(Token),
+    RedefiningLocalVar(Token),
+    TopLevelReturn(Token),
 }
 
 // region:    --- Error Boilerplate
